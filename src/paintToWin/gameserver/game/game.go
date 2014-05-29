@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+var PlayerNotFoundError = errors.New("Player not found")
+
 type messageHandler func(from *Player, message Message)
 
 type Game struct {
@@ -61,14 +63,14 @@ func (game *Game) PushState(state GameState) {
 	fmt.Println("Pushing state ", state, reflect.TypeOf(state))
 	game.ActiveState().Deactivate()
 	game.state = append(game.state, state)
-	game.ActiveState().Activate(game)
+	game.activateState()
 }
 
 func (game *Game) PopState() GameState {
 	game.ActiveState().Deactivate()
 	state := game.state[len(game.state)-1]
 	game.state = game.state[:len(game.state)-1]
-	game.ActiveState().Activate(game)
+	game.activateState()
 	fmt.Println("Popping state to ", game.ActiveState(), reflect.TypeOf(game.ActiveState()))
 	return state
 }
@@ -77,7 +79,19 @@ func (game *Game) SwapState(state GameState) {
 	fmt.Println("Swapping state to ", state, reflect.TypeOf(state))
 	game.ActiveState().Deactivate()
 	game.state[len(game.state)-1] = state
-	game.ActiveState().Activate(game)
+	game.activateState()
+}
+
+func (game *Game) activateState() {
+	activeState := game.ActiveState()
+	activeState.Activate(game)
+	players := []string{}
+	for _, player := range game.Players {
+		if !player.HasLeft {
+			players = append(players, player.Name)
+		}
+	}
+	game.Broadcast(NewGameStateMessage(reflect.TypeOf(activeState).Name(), activeState, players, game.timeLeft()))
 }
 
 func (game *Game) ActiveState() GameState {
@@ -93,6 +107,10 @@ func (game *Game) SetTimeout(timeout time.Duration) {
 	game.timeout = time.After(timeout)
 }
 
+func (game *Game) timeLeft() int {
+	return 0
+}
+
 func (game *Game) addPlayer(player *Player) {
 	players := make([]string, 0, len(game.Players))
 
@@ -101,7 +119,10 @@ func (game *Game) addPlayer(player *Player) {
 		p.OutData <- joinMessage
 		players = append(players, p.Name)
 	}
-	player.OutData <- NewGameStateMessage(players, 0)
+
+	activeState := game.ActiveState()
+
+	player.OutData <- NewGameStateMessage(reflect.TypeOf(activeState).Name(), activeState, players, game.timeLeft())
 	game.Players = append(game.Players, player)
 }
 
@@ -146,7 +167,7 @@ func (game *Game) findPlayer(player *Player) (int, error) {
 			return i, nil
 		}
 	}
-	return 0, errors.New("Player not found")
+	return 0, PlayerNotFoundError
 }
 
 func (game *Game) Broadcast(message Message) {
@@ -178,8 +199,10 @@ func (game *Game) Run() {
 			player.HasLeft = true
 			game.ActiveState().PlayerLeave(player)
 			game.RemovePlayer(player)
-		case message := <-game.InData:
-			if !game.handleMessage(message) {
+		case message, ok := <-game.InData:
+			if !ok {
+				break
+			} else if !game.handleMessage(message) {
 				game.ActiveState().Message(message)
 			}
 		}

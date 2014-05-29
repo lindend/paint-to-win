@@ -29,18 +29,24 @@ func CreateGame(store *storage.Storage) (storage.Game, error) {
 	if len(gameServers) == 0 {
 		return storage.Game{}, NoActiveGameServersError
 	}
-	serverIndex := rand.Intn(len(gameServers))
-	gameServer := gameServers[serverIndex]
+	fmt.Println("Found ", len(gameServers), " game servers")
+	var err error
+	for len(gameServers) > 0 {
+		serverIndex := rand.Intn(len(gameServers))
+		gameServer := gameServers[serverIndex]
+		gameServers = append(gameServers[:serverIndex], gameServers[serverIndex+1:]...)
 
-	result := api.CreateGameOutput{}
-	var errResult string
-	fmt.Println("Creating game on ", gameServer.Address+"/games/create")
-	if err := web.Post(gameServer.Address+"/games/create", nil, &result, &errResult); err != nil {
-		fmt.Println("Error in http request ", err)
-		return storage.Game{}, err
+		result := api.CreateGameOutput{}
+		var errResult string
+		fmt.Println("Creating game on ", gameServer.Address+"/games/create")
+		if err = web.Post(gameServer.Address+"/games/create", nil, &result, &errResult); err != nil {
+			fmt.Println("Error in http request ", err)
+		} else {
+			return storage.Game{}, nil
+		}
 	}
 
-	return storage.Game{}, nil
+	return storage.Game{}, err
 }
 
 func JoinGame(gameId string, store *storage.Storage, session *storage.Session) (api.ReservationOutput, error) {

@@ -18,6 +18,7 @@ type InMessage struct {
 type GameStateMessage struct {
 	Players       []string
 	State         string
+	StateData     interface{}
 	TimeRemaining int
 }
 
@@ -123,8 +124,8 @@ func NewNewRoundMessage(drawingPlayer string) Message {
 	return Message{MsgId_NewRound, NewRoundMessage{drawingPlayer}}
 }
 
-func NewGameStateMessage(players []string, timeLeft int) Message {
-	return Message{MsgId_GameState, GameStateMessage{players, "playing", timeLeft}}
+func NewGameStateMessage(state string, stateData interface{}, players []string, timeLeft int) Message {
+	return Message{MsgId_GameState, GameStateMessage{players, state, stateData, timeLeft}}
 }
 
 func NewStrokesMessage(strokes []Stroke) Message {
