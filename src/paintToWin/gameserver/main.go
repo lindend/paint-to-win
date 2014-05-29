@@ -18,7 +18,7 @@ func main() {
 	config := Config{
 		WebsocketPort:      8085,
 		ApiPort:            8084,
-		DbConnectionString: "user=p2wuser password=devpassword host=xena port=5432 dbname=paint2win sslmode=disable",
+		DbConnectionString: "user=p2wuser password=devpassword host=10.10.0.8 port=5432 dbname=paint2win sslmode=disable",
 		RedisAddress:       "10.10.0.98:6379",
 	}
 	idGenerator := StartIdGenerator()
@@ -91,7 +91,7 @@ func main() {
 
 func startWebsocketEndpoint(port int, onMessage chan communication.Message, onConnect chan network.NewConnection, onDisconnect chan network.Connection) error {
 	fmt.Println("Starting web socket server")
-	wsEndpoint, err := ws.StartWebSocketServer(port, []string{"/{reservationId}/{playerId}"})
+	wsEndpoint, err := ws.StartWebSocketServer(port, []string{"/{reservationId}/{sessionId}"})
 	if err != nil {
 		return err
 	}

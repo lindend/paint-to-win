@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"crypto/sha1"
 	"fmt"
 	"time"
@@ -10,7 +11,9 @@ func StartIdGenerator() <-chan string {
 	idGenChan := make(chan string)
 
 	hasher := sha1.New()
-	hasher.Write([]byte(string(time.Now().UnixNano())))
+	seed := make([]byte, 32)
+	rand.Read(seed)
+	hasher.Write(seed)
 
 	counter := 0
 

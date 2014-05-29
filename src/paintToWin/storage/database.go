@@ -7,6 +7,9 @@ import (
 
 func InitializeDatabase(connectionString string) (gorm.DB, error) {
 	database, err := gorm.Open("postgres", connectionString)
+	if err := database.DB().Ping(); err != nil {
+		return gorm.DB{}, err
+	}
 
 	if err != nil {
 		return gorm.DB{}, err

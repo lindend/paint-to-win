@@ -69,5 +69,5 @@ func ReserveHandler(gameManager *gamemanager.GameManager) web.RequestHandler {
 
 func RegisterGameManagerApi(router *mux.Router, gameManager *gamemanager.GameManager) {
 	router.HandleFunc("/games/create", web.DefaultHandler(CreateHandler(gameManager))).Methods("POST", "OPTIONS")
-	router.HandleFunc("/game/{gameId}/reserve/{playerId}", web.DefaultHandler(ReserveHandler(gameManager))).Methods("POST", "OPTIONS")
+	router.HandleFunc("/games/{gameId}/reserve/{playerId}", web.DefaultHandler(ReserveHandler(gameManager))).Methods("POST", "OPTIONS")
 }
