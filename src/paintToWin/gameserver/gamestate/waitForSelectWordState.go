@@ -31,6 +31,10 @@ func (w *WaitForSelectWordState) chooseWordMessage(player *game.Player, message 
 	}
 }
 
+func (w WaitForSelectWordState) Name() string {
+	return "WaitForWordState"
+}
+
 func (w WaitForSelectWordState) Timeout() {
 	w.game.Stop()
 }

@@ -25,6 +25,10 @@ func newWaitForPlayersState(minNumPlayers int, timeout time.Duration, context st
 	}
 }
 
+func (w WaitForPlayersState) Name() string {
+	return "WaitForPlayersState"
+}
+
 func (w WaitForPlayersState) Timeout() {
 	w.game.Stop()
 }

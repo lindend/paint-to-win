@@ -3,7 +3,6 @@ package game
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"time"
 )
 
@@ -60,7 +59,7 @@ func (game *Game) setupMessageHandlers() {
 }
 
 func (game *Game) PushState(state GameState) {
-	fmt.Println("Pushing state ", state, reflect.TypeOf(state))
+	fmt.Println("Pushing state ", state, state.Name())
 	game.ActiveState().Deactivate()
 	game.state = append(game.state, state)
 	game.activateState()
@@ -71,12 +70,12 @@ func (game *Game) PopState() GameState {
 	state := game.state[len(game.state)-1]
 	game.state = game.state[:len(game.state)-1]
 	game.activateState()
-	fmt.Println("Popping state to ", game.ActiveState(), reflect.TypeOf(game.ActiveState()))
+	fmt.Println("Popping state to ", game.ActiveState(), game.ActiveState().Name())
 	return state
 }
 
 func (game *Game) SwapState(state GameState) {
-	fmt.Println("Swapping state to ", state, reflect.TypeOf(state))
+	fmt.Println("Swapping state to ", state, state.Name())
 	game.ActiveState().Deactivate()
 	game.state[len(game.state)-1] = state
 	game.activateState()
@@ -91,7 +90,7 @@ func (game *Game) activateState() {
 			players = append(players, player.Name)
 		}
 	}
-	game.Broadcast(NewGameStateMessage(reflect.TypeOf(activeState).Name(), activeState, players, game.timeLeft()))
+	game.Broadcast(NewGameStateMessage(activeState.Name(), activeState, players, game.timeLeft()))
 }
 
 func (game *Game) ActiveState() GameState {
@@ -122,7 +121,7 @@ func (game *Game) addPlayer(player *Player) {
 
 	activeState := game.ActiveState()
 
-	player.OutData <- NewGameStateMessage(reflect.TypeOf(activeState).Name(), activeState, players, game.timeLeft())
+	player.OutData <- NewGameStateMessage(activeState.Name(), activeState, players, game.timeLeft())
 	game.Players = append(game.Players, player)
 }
 

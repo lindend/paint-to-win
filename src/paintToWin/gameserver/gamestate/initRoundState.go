@@ -27,13 +27,17 @@ func newInitRoundState(context stateContext) *InitRoundState {
 	}
 }
 
+func (state InitRoundState) Name() string {
+	return "InitRoundState"
+}
+
 func (state *InitRoundState) Activate(g *game.Game) {
 	state.game = g
 
 	state.context.word = ""
 
 	if len(g.Players) < 3 {
-		g.PushState(newWaitForPlayersState(MinNumPlayers, 10*time.Minute, state.context))
+		g.PushState(newWaitForPlayersState(MinNumPlayers, 100*time.Minute, state.context))
 	} else {
 		if state.context.drawingPlayer == nil {
 			state.context.drawingPlayer = g.Players[0]

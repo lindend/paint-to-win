@@ -19,6 +19,10 @@ func newEndRoundState(context stateContext) *EndRoundState {
 	}
 }
 
+func (e EndRoundState) Name() string {
+	return "EndRoundState"
+}
+
 func (e *EndRoundState) Activate(g *game.Game) {
 	e.game = g
 

@@ -31,6 +31,10 @@ func newPlayGameState(context stateContext) *PlayGameState {
 	return playState
 }
 
+func (p PlayGameState) Name() string {
+	return "PlayGameState"
+}
+
 func (p *PlayGameState) Timeout() {
 	p.game.SwapState(newEndRoundState(p.context))
 }

@@ -1,6 +1,7 @@
 package game
 
 type GameState interface {
+	Name() string
 	Timeout()
 	Activate(game *Game)
 	Deactivate()
