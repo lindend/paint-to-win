@@ -1,22 +1,22 @@
 package game
 
 type Player struct {
-	Name      string
-	IsGuest   bool
-	PlayerId  string
-	SessionId string
-	HasLeft   bool
+	Name     string
+	IsGuest  bool
+	PlayerId string
+	TempId   string
+	HasLeft  bool
 
 	OutData chan<- Message
 }
 
-func NewPlayer(name string, isGuest bool, id string, sessionId string, outData chan<- Message) *Player {
+func NewPlayer(name string, isGuest bool, id string, tempId string, outData chan<- Message) *Player {
 	return &Player{
-		Name:      name,
-		IsGuest:   isGuest,
-		PlayerId:  id,
-		SessionId: sessionId,
-		OutData:   outData,
-		HasLeft:   false,
+		Name:     name,
+		IsGuest:  isGuest,
+		PlayerId: id,
+		TempId:   tempId,
+		OutData:  outData,
+		HasLeft:  false,
 	}
 }

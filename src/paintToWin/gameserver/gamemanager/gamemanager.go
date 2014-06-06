@@ -112,21 +112,17 @@ func (gameManager *GameManager) ClaimSpot(reservationId string) (*game.Game, err
 	return g.game, nil
 }
 
-func (gameManager *GameManager) ReclaimSpot(gameId string, playerId string, sessionId string) (*game.Game, error) {
+func (gameManager *GameManager) ReclaimSpot(gameId string, playerId string) (*game.Game, error) {
 	g, exists := gameManager.games[gameId]
 	if !exists {
 		return nil, GameDoesNotExistError
 	}
 
-	var player *game.Player
-	player, exists = getPlayer(g.game, playerId)
+	_, exists = getPlayer(g.game, playerId)
 	if !exists {
 		return nil, PlayerNotFoundError
 	}
 
-	if player.SessionId != sessionId {
-		return nil, PlayerNotFoundError
-	}
 	return g.game, nil
 }
 

@@ -15,19 +15,29 @@ type InMessage struct {
 	Source  *Player
 }
 
+type MessagePlayer struct {
+	Id   string
+	Name string
+}
+
+type WelcomeMessage struct {
+	Player  MessagePlayer
+	Message string
+}
+
 type GameStateMessage struct {
-	Players       []string
+	Players       []MessagePlayer
 	State         string
 	StateData     interface{}
 	TimeRemaining int
 }
 
 type TurnToPaintMessage struct {
-	PaintingPlayer string
+	PaintingPlayerId string
 }
 
 type TurnToChooseWordMessage struct {
-	ChoosingPlayer string
+	ChoosingPlayerId string
 }
 
 type StrokesMessage struct {
@@ -45,15 +55,15 @@ type GuessMessage struct {
 }
 
 type PlayerJoinMessage struct {
-	PlayerName string
+	Player MessagePlayer
 }
 
 type PlayerLeaveMessage struct {
-	PlayerName string
+	PlayerId string
 }
 
 type NewRoundMessage struct {
-	DrawingPlayer string
+	DrawingPlayerId string
 }
 
 type RoundWordMessage struct {
@@ -61,8 +71,8 @@ type RoundWordMessage struct {
 }
 
 type PlayerScore struct {
-	Score      int
-	PlayerName string
+	Score    int
+	PlayerId string
 }
 
 type EndRoundMessage struct {
@@ -81,7 +91,7 @@ type ChooseWordMessage struct {
 }
 
 type CorrectGuessMessage struct {
-	PlayerName string
+	PlayerId string
 }
 
 type CloseGuessMessage struct {
@@ -90,8 +100,8 @@ type CloseGuessMessage struct {
 }
 
 type WrongGuessMessage struct {
-	PlayerName string
-	Guess      string
+	PlayerId string
+	Guess    string
 }
 
 const MsgId_PlayerJoin = "PlayerJoin"
@@ -107,24 +117,29 @@ const MsgId_CorrectGuess = "CorrectGuess"
 const MsgId_CloseGuess = "CloseGuess"
 const MsgId_WrongGuess = "WrongGuess"
 const MsgId_Guess = "Guess"
+const MsgId_Welcome = "Welcome"
 
-func NewPlayerJoinMessage(name string) Message {
-	return Message{MsgId_PlayerJoin, PlayerJoinMessage{name}}
+func NewWelcomeMessage(player MessagePlayer, message string) Message {
+	return Message{MsgId_Welcome, WelcomeMessage{player, message}}
 }
 
-func NewPlayerLeaveMessage(name string) Message {
-	return Message{MsgId_PlayerLeave, PlayerLeaveMessage{name}}
+func NewPlayerJoinMessage(player MessagePlayer) Message {
+	return Message{MsgId_PlayerJoin, PlayerJoinMessage{player}}
+}
+
+func NewPlayerLeaveMessage(id string) Message {
+	return Message{MsgId_PlayerLeave, PlayerLeaveMessage{id}}
 }
 
 func NewChatMessage(from string, to string, message string) Message {
 	return Message{MsgId_Chat, ChatMessage{to, from, message}}
 }
 
-func NewNewRoundMessage(drawingPlayer string) Message {
-	return Message{MsgId_NewRound, NewRoundMessage{drawingPlayer}}
+func NewNewRoundMessage(drawingPlayerId string) Message {
+	return Message{MsgId_NewRound, NewRoundMessage{drawingPlayerId}}
 }
 
-func NewGameStateMessage(state string, stateData interface{}, players []string, timeLeft int) Message {
+func NewGameStateMessage(state string, stateData interface{}, players []MessagePlayer, timeLeft int) Message {
 	return Message{MsgId_GameState, GameStateMessage{players, state, stateData, timeLeft}}
 }
 
@@ -132,24 +147,24 @@ func NewStrokesMessage(strokes []Stroke) Message {
 	return Message{MsgId_Strokes, StrokesMessage{strokes}}
 }
 
-func NewTurnToPaintMessage(paintingPlayer string) Message {
-	return Message{MsgId_TurnToPaint, TurnToPaintMessage{paintingPlayer}}
+func NewTurnToPaintMessage(playerId string) Message {
+	return Message{MsgId_TurnToPaint, TurnToPaintMessage{playerId}}
 }
 
-func NewTurnToChooseWordMessage(choosingPlayer string) Message {
-	return Message{MsgId_TurnToChooseWord, TurnToChooseWordMessage{choosingPlayer}}
+func NewTurnToChooseWordMessage(playerId string) Message {
+	return Message{MsgId_TurnToChooseWord, TurnToChooseWordMessage{playerId}}
 }
 
-func NewCorrectGuessMessage(playerName string) Message {
-	return Message{MsgId_CorrectGuess, CorrectGuessMessage{playerName}}
+func NewCorrectGuessMessage(playerId string) Message {
+	return Message{MsgId_CorrectGuess, CorrectGuessMessage{playerId}}
 }
 
 func NewCloseGuessMessage(guess string, hint string) Message {
 	return Message{MsgId_CloseGuess, CloseGuessMessage{guess, hint}}
 }
 
-func NewWrongGuessMessage(playerName string, guess string) Message {
-	return Message{MsgId_WrongGuess, WrongGuessMessage{playerName, guess}}
+func NewWrongGuessMessage(playerId string, guess string) Message {
+	return Message{MsgId_WrongGuess, WrongGuessMessage{playerId, guess}}
 }
 
 type internalMessage struct {

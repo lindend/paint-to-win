@@ -84,10 +84,13 @@ func (game *Game) SwapState(state GameState) {
 func (game *Game) activateState() {
 	activeState := game.ActiveState()
 	activeState.Activate(game)
-	players := []string{}
+	players := []MessagePlayer{}
 	for _, player := range game.Players {
 		if !player.HasLeft {
-			players = append(players, player.Name)
+			players = append(players, MessagePlayer{
+				Id:   player.TempId,
+				Name: player.Name,
+			})
 		}
 	}
 	game.Broadcast(NewGameStateMessage(activeState.Name(), activeState, players, game.timeLeft()))
@@ -111,16 +114,24 @@ func (game *Game) timeLeft() int {
 }
 
 func (game *Game) addPlayer(player *Player) {
-	players := make([]string, 0, len(game.Players))
+	players := make([]MessagePlayer, 0, len(game.Players))
+	msgPlayer := MessagePlayer{
+		Id:   player.TempId,
+		Name: player.Name,
+	}
 
-	joinMessage := NewPlayerJoinMessage(player.Name)
+	joinMessage := NewPlayerJoinMessage(msgPlayer)
 	for _, p := range game.Players {
 		p.OutData <- joinMessage
-		players = append(players, p.Name)
+		players = append(players, MessagePlayer{
+			Id:   p.TempId,
+			Name: p.Name,
+		})
 	}
 
 	activeState := game.ActiveState()
 
+	player.OutData <- NewWelcomeMessage(msgPlayer, "")
 	player.OutData <- NewGameStateMessage(activeState.Name(), activeState, players, game.timeLeft())
 	game.Players = append(game.Players, player)
 }
