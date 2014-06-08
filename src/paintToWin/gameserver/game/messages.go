@@ -33,7 +33,7 @@ type GameStateMessage struct {
 }
 
 type TurnToPaintMessage struct {
-	PaintingPlayerId string
+	Word string
 }
 
 type TurnToChooseWordMessage struct {
@@ -112,7 +112,8 @@ const MsgId_GameState = "GameState"
 //const MsgId_NewRound = "NewRound"
 const MsgId_Strokes = "Strokes"
 
-//const MsgId_TurnToPaint = "TurnToPaint"
+const MsgId_TurnToPaint = "TurnToPaint"
+
 //const MsgId_TurnToChooseWord = "TurnToChooseWord"
 const MsgId_ChooseWord = "ChooseWord"
 const MsgId_CorrectGuess = "CorrectGuess"
@@ -149,9 +150,9 @@ func NewStrokesMessage(strokes []Stroke) Message {
 	return Message{MsgId_Strokes, StrokesMessage{strokes}}
 }
 
-//func NewTurnToPaintMessage(playerId string) Message {
-//	return Message{MsgId_TurnToPaint, TurnToPaintMessage{playerId}}
-//}
+func NewTurnToPaintMessage(word string) Message {
+	return Message{MsgId_TurnToPaint, TurnToPaintMessage{word}}
+}
 
 //func NewTurnToChooseWordMessage(playerId string) Message {
 //	return Message{MsgId_TurnToChooseWord, TurnToChooseWordMessage{playerId}}

@@ -45,6 +45,7 @@ func (p *PlayGameState) Timeout() {
 func (p *PlayGameState) Activate(g *game.Game) {
 	p.game = g
 	p.game.SetTimeout(120 * time.Second)
+	p.context.drawingPlayer.OutData <- game.NewTurnToPaintMessage(p.context.word)
 }
 
 func (p PlayGameState) Message(message game.InMessage) {
