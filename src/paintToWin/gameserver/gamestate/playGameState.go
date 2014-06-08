@@ -17,12 +17,15 @@ type PlayGameState struct {
 	correctGuessers []*game.Player
 
 	messageHandler *game.MessageHandler
+
+	DrawingPlayerId string
 }
 
 func newPlayGameState(context stateContext) *PlayGameState {
 	playState := &PlayGameState{
-		context:        context,
-		messageHandler: game.NewMessageHandler(),
+		context:         context,
+		messageHandler:  game.NewMessageHandler(),
+		DrawingPlayerId: context.drawingPlayer.TempId,
 	}
 
 	playState.messageHandler.Add(playState.guessMessage)

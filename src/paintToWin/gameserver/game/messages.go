@@ -62,13 +62,13 @@ type PlayerLeaveMessage struct {
 	PlayerId string
 }
 
-type NewRoundMessage struct {
-	DrawingPlayerId string
-}
-
-type RoundWordMessage struct {
-	Word string
-}
+//type NewRoundMessage struct {
+//	DrawingPlayerId string
+//}
+//
+//type RoundWordMessage struct {
+//	Word string
+//}
 
 type PlayerScore struct {
 	Score    int
@@ -108,10 +108,12 @@ const MsgId_PlayerJoin = "PlayerJoin"
 const MsgId_PlayerLeave = "PlayerLeave"
 const MsgId_Chat = "Chat"
 const MsgId_GameState = "GameState"
-const MsgId_NewRound = "NewRound"
+
+//const MsgId_NewRound = "NewRound"
 const MsgId_Strokes = "Strokes"
-const MsgId_TurnToPaint = "TurnToPaint"
-const MsgId_TurnToChooseWord = "TurnToChooseWord"
+
+//const MsgId_TurnToPaint = "TurnToPaint"
+//const MsgId_TurnToChooseWord = "TurnToChooseWord"
 const MsgId_ChooseWord = "ChooseWord"
 const MsgId_CorrectGuess = "CorrectGuess"
 const MsgId_CloseGuess = "CloseGuess"
@@ -135,9 +137,9 @@ func NewChatMessage(from string, to string, message string) Message {
 	return Message{MsgId_Chat, ChatMessage{to, from, message}}
 }
 
-func NewNewRoundMessage(drawingPlayerId string) Message {
-	return Message{MsgId_NewRound, NewRoundMessage{drawingPlayerId}}
-}
+//func NewNewRoundMessage(drawingPlayerId string) Message {
+//	return Message{MsgId_NewRound, NewRoundMessage{drawingPlayerId}}
+//}
 
 func NewGameStateMessage(state string, stateData interface{}, players []MessagePlayer, timeLeft int) Message {
 	return Message{MsgId_GameState, GameStateMessage{players, state, stateData, timeLeft}}
@@ -147,13 +149,13 @@ func NewStrokesMessage(strokes []Stroke) Message {
 	return Message{MsgId_Strokes, StrokesMessage{strokes}}
 }
 
-func NewTurnToPaintMessage(playerId string) Message {
-	return Message{MsgId_TurnToPaint, TurnToPaintMessage{playerId}}
-}
+//func NewTurnToPaintMessage(playerId string) Message {
+//	return Message{MsgId_TurnToPaint, TurnToPaintMessage{playerId}}
+//}
 
-func NewTurnToChooseWordMessage(playerId string) Message {
-	return Message{MsgId_TurnToChooseWord, TurnToChooseWordMessage{playerId}}
-}
+//func NewTurnToChooseWordMessage(playerId string) Message {
+//	return Message{MsgId_TurnToChooseWord, TurnToChooseWordMessage{playerId}}
+//}
 
 func NewCorrectGuessMessage(playerId string) Message {
 	return Message{MsgId_CorrectGuess, CorrectGuessMessage{playerId}}

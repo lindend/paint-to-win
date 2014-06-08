@@ -69,8 +69,8 @@ func (game *Game) PopState() GameState {
 	game.ActiveState().Deactivate()
 	state := game.state[len(game.state)-1]
 	game.state = game.state[:len(game.state)-1]
-	game.activateState()
 	fmt.Println("Popping state to ", game.ActiveState(), game.ActiveState().Name())
+	game.activateState()
 	return state
 }
 
@@ -83,7 +83,6 @@ func (game *Game) SwapState(state GameState) {
 
 func (game *Game) activateState() {
 	activeState := game.ActiveState()
-	activeState.Activate(game)
 	players := []MessagePlayer{}
 	for _, player := range game.Players {
 		if !player.HasLeft {
@@ -94,6 +93,7 @@ func (game *Game) activateState() {
 		}
 	}
 	game.Broadcast(NewGameStateMessage(activeState.Name(), activeState, players, game.timeLeft()))
+	activeState.Activate(game)
 }
 
 func (game *Game) ActiveState() GameState {

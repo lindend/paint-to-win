@@ -12,12 +12,15 @@ type WaitForSelectWordState struct {
 	context stateContext
 
 	messageHandler *game.MessageHandler
+
+	SelectingPlayer string
 }
 
 func newWaitForSelectWordState(context stateContext) *WaitForSelectWordState {
 	waitState := &WaitForSelectWordState{
-		context:        context,
-		messageHandler: game.NewMessageHandler(),
+		context:         context,
+		messageHandler:  game.NewMessageHandler(),
+		SelectingPlayer: context.choosingPlayer.TempId,
 	}
 	waitState.messageHandler.Add(waitState.chooseWordMessage)
 	return waitState
@@ -26,7 +29,7 @@ func newWaitForSelectWordState(context stateContext) *WaitForSelectWordState {
 func (w *WaitForSelectWordState) chooseWordMessage(player *game.Player, message *game.ChooseWordMessage) {
 	if player == w.context.choosingPlayer {
 		w.context.word = message.Word
-		w.game.PopState()
+		w.game.SwapState(newPlayGameState(w.context))
 		return
 	}
 }

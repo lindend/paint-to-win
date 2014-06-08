@@ -42,7 +42,7 @@ func (state *InitRoundState) Activate(g *game.Game) {
 		if state.context.drawingPlayer == nil {
 			state.context.drawingPlayer = g.Players[0]
 		}
-		state.context.choosingPlayer = g.PreviousPlayer(state.context.drawingPlayer)
+		state.context.choosingPlayer = g.NextPlayer(state.context.drawingPlayer)
 
 		g.SwapState(newWaitForSelectWordState(state.context))
 	}
