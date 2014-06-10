@@ -18,14 +18,16 @@ type PlayGameState struct {
 
 	messageHandler *game.MessageHandler
 
-	DrawingPlayerId string
+	DrawingPlayerId  string
+	ChoosingPlayerId string
 }
 
 func newPlayGameState(context stateContext) *PlayGameState {
 	playState := &PlayGameState{
-		context:         context,
-		messageHandler:  game.NewMessageHandler(),
-		DrawingPlayerId: context.drawingPlayer.TempId,
+		context:          context,
+		messageHandler:   game.NewMessageHandler(),
+		DrawingPlayerId:  context.drawingPlayer.TempId,
+		ChoosingPlayerId: context.choosingPlayer.TempId,
 	}
 
 	playState.messageHandler.Add(playState.guessMessage)
@@ -69,13 +71,13 @@ func (p *PlayGameState) strokesMessage(player *game.Player, strokes *game.Stroke
 func (p *PlayGameState) guessMessage(player *game.Player, guess *game.GuessMessage) {
 	if player != p.context.drawingPlayer && player != p.context.choosingPlayer {
 		if guess.Guess == p.context.word {
-			p.game.Broadcast(game.NewCorrectGuessMessage(player.Name))
+			p.game.Broadcast(game.NewCorrectGuessMessage(player.TempId))
 			if len(p.correctGuessers) == 0 {
 				p.game.SetTimeout(10 * time.Second)
 			}
 			p.correctGuessers = append(p.correctGuessers, player)
 		} else {
-			p.game.Broadcast(game.NewWrongGuessMessage(player.Name, guess.Guess))
+			p.game.Broadcast(game.NewWrongGuessMessage(player.TempId, guess.Guess))
 		}
 	}
 }
