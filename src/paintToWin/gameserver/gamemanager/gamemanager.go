@@ -65,10 +65,15 @@ func (gameManager *GameManager) CreateGame() (*storage.Game, error) {
 	codec.NewGameMessageDecoder(gameInput, newGame.InData)
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+			}
+
+			storageGame.IsActive = false
+			gameManager.storage.Save(storageGame)
+			gameManager.removeGame(newGame)
+		}()
 		newGame.Run()
-		storageGame.IsActive = false
-		gameManager.storage.Save(storageGame)
-		gameManager.removeGame(newGame)
 	}()
 
 	gameManager.syncLock.Lock()

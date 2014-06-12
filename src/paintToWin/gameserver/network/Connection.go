@@ -3,7 +3,7 @@ package network
 import ()
 
 type Connection interface {
-	Close() error
+	Close()
 	Send(data []byte) error
 }
 

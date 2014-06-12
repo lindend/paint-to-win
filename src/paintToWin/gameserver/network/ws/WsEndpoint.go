@@ -19,19 +19,15 @@ type WsEndpoint struct {
 }
 
 type WsConnection struct {
-	socket     *websocket.Conn
-	disconnect chan chan error
+	socket *websocket.Conn
 }
 
 func (con WsConnection) Send(data []byte) error {
 	return con.socket.WriteMessage(websocket.BinaryMessage, data)
 }
 
-func (con WsConnection) Close() error {
-	callback := make(chan error)
-	con.disconnect <- callback
-	err := <-callback
-	return err
+func (con WsConnection) Close() {
+	con.socket.Close()
 }
 
 func (endpoint *WsEndpoint) clientDisconnect(connection WsConnection) {
@@ -40,39 +36,33 @@ func (endpoint *WsEndpoint) clientDisconnect(connection WsConnection) {
 }
 
 func (endpoint *WsEndpoint) handleClient(connection *websocket.Conn, variables map[string]string) {
-	wsConn := WsConnection{connection, make(chan chan error)}
+	wsConn := WsConnection{connection}
 	endpoint.connections[wsConn] = true
 	endpoint.OnConnect <- network.NewConnection{
 		Connection: wsConn,
 		Variables:  variables,
 	}
 
-	select {
-	case <-socketReceiveLoop(wsConn, endpoint.OnData):
-	case dcChan := <-wsConn.disconnect:
-		dcChan <- nil
-	}
-
+	err := <-socketReceiveLoop(wsConn, endpoint.OnData)
+	fmt.Println("Client disconnected ", err)
 	endpoint.clientDisconnect(wsConn)
 }
 
-func socketReceiveLoop(connection WsConnection, OnData chan<- network.Packet) chan error {
-	resultChannel := make(chan error)
+func socketReceiveLoop(connection WsConnection, onData chan<- network.Packet) chan error {
+	onError := make(chan error)
 	go func() {
 		for {
 			_, data, err := connection.socket.ReadMessage()
 			if err != nil {
-				connection.Close()
-				resultChannel <- err
+				onError <- err
 				break
 			}
 			fmt.Println("Data received WsEndpoint.go")
 			var message = network.Packet{data, connection}
-			OnData <- message
+			onData <- message
 		}
 	}()
-
-	return resultChannel
+	return onError
 }
 
 func StartWebSocketServer(port int, paths []string) (WsEndpoint, error) {
