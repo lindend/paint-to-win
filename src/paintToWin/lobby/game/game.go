@@ -42,7 +42,7 @@ func CreateGame(store *storage.Storage) (storage.Game, error) {
 		if err = web.Post(gameServer.Address+"/games/create", nil, &result, &errResult); err != nil {
 			fmt.Println("Error in http request ", err)
 		} else {
-			return storage.Game{}, nil
+			return storage.Game{GameId: result.GameId}, nil
 		}
 	}
 
