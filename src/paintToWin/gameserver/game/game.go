@@ -206,6 +206,7 @@ func (game *Game) Run() {
 			game.addPlayer(player)
 			game.ActiveState().PlayerJoin(player)
 		case player := <-game.PlayerLeave:
+			fmt.Println("Player left (game)")
 			player.HasLeft = true
 			game.ActiveState().PlayerLeave(player)
 			game.RemovePlayer(player)

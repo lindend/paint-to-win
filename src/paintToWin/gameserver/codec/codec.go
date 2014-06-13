@@ -80,3 +80,19 @@ func NewGameMessageDecoder(inData <-chan communication.InMessage, outData chan<-
 		}
 	}()
 }
+
+func NewDisconnectDecoder(disconnect <-chan interface{}, outDisconnect chan<- *game.Player) {
+	go func() {
+		for {
+			fmt.Println("Disconnect decoder on ", disconnect)
+			if entity, ok := <-disconnect; ok {
+				player := entity.(*game.Player)
+				fmt.Println(player, "disconnected (codec)")
+				outDisconnect <- player
+			} else {
+				close(outDisconnect)
+				break
+			}
+		}
+	}()
+}

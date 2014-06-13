@@ -2,6 +2,7 @@ package gamemanager
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -57,12 +58,14 @@ func NewGameManager(
 }
 
 func (gameManager *GameManager) CreateGame() (*storage.Game, error) {
+	fmt.Println("Creating new game")
 	newGame := game.NewGame(<-gameManager.idGenerator, gamestate.NewInitRoundState())
 	storageGame := ToStorageGame(newGame, true, 0, gameManager.server)
 	gameManager.storage.Save(storageGame)
 
 	gameInput := gameManager.communicationHub.RegisterChannel(newGame.Id)
-	codec.NewGameMessageDecoder(gameInput, newGame.InData)
+	codec.NewGameMessageDecoder(gameInput.InData, newGame.InData)
+	codec.NewDisconnectDecoder(gameInput.Disconnect, newGame.PlayerLeave)
 
 	go func() {
 		defer func() {
