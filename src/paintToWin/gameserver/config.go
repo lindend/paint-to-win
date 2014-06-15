@@ -1,13 +1,8 @@
 package main
 
 type Config struct {
-	WebsocketPort int
-	ApiPort       int
+	GameServerGamePort int
+	GameServerApiPort  int
 
-	DbConnectionString string
-	RedisAddress       string
-}
-
-func LoadConfig() Config {
-	return Config{}
+	RedisAddress string
 }

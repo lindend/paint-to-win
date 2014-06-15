@@ -1,25 +1,24 @@
 package main
 
 import (
-	"fmt"
 	"os"
-	"paintToWin/storage"
 )
 
-type ServerInfo struct {
+type serverInfo struct {
 	Name     string
 	HostName string
+	Address  string
 }
 
-func loadServerInfo(port int) (storage.Server, string, error) {
+func loadServerInfo() (serverInfo, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
-		return storage.Server{}, "", err
+		return serverInfo{}, err
 	}
 
-	return storage.Server{
-		Name:    hostname,
-		Address: fmt.Sprintf("http://%v:%d", hostname, port),
-		Type:    "gameserver",
-	}, hostname, nil
+	return serverInfo{
+		Name:     hostname,
+		HostName: hostname,
+		Address:  hostname,
+	}, nil
 }

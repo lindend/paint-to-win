@@ -11,35 +11,43 @@ import (
 	"paintToWin/gameserver/gamemanager"
 	"paintToWin/gameserver/network"
 	"paintToWin/gameserver/network/ws"
+	"paintToWin/settings"
 	"paintToWin/storage"
 )
 
 func main() {
-	config := Config{
-		WebsocketPort:      8085,
-		ApiPort:            8084,
-		DbConnectionString: "user=p2wuser password=devpassword host=10.10.0.8 port=5432 dbname=paint2win sslmode=disable",
-		RedisAddress:       "10.10.0.98:6379",
-	}
+	dbConnectionString := "user=p2wuser password=devpassword host=10.10.0.8 port=5432 dbname=paint2win sslmode=disable"
+
 	idGenerator := StartIdGenerator()
 
-	database, err := storage.InitializeDatabase(config.DbConnectionString)
+	database, err := storage.InitializeDatabase(dbConnectionString)
 	if err != nil {
 		log.Fatal("Unable to initialize db ", err)
 		return
 	}
 
-	var currentServer storage.Server
-	var serverAddress string
-	currentServer, serverAddress, err = loadServerInfo(config.ApiPort)
+	serverInfo, err := loadServerInfo()
 	if err != nil {
-		log.Fatal("Error while reading server info", err)
+		log.Fatal("Unable to load server info")
 		return
 	}
+
+	config := Config{}
+	if err = settings.Load(serverInfo.Name, database, &config); err != nil {
+		log.Fatal("Error while loading config: \n" + err.Error())
+		return
+	}
+
+	currentServer := storage.Server{
+		Name:    serverInfo.Name,
+		Address: fmt.Sprintf("http://%v:%d", serverInfo.HostName, config.GameServerApiPort),
+		Type:    "gameserver",
+	}
+
 	database.Where(storage.Server{Name: currentServer.Name}).Assign(currentServer).FirstOrInit(&currentServer)
 	database.Save(&currentServer)
 
-	store, err := storage.NewStorage(config.DbConnectionString, config.RedisAddress)
+	store, err := storage.NewStorage(dbConnectionString, config.RedisAddress)
 	if err != nil {
 		log.Fatal("Unable to initialize storage ", err)
 		return
@@ -51,14 +59,14 @@ func main() {
 
 	endpoints := []network.EndpointInfo{}
 
-	err = startWebsocketEndpoint(config.WebsocketPort, messageChan, connectChan, disconnectChan)
+	err = startWebsocketEndpoint(config.GameServerGamePort, messageChan, connectChan, disconnectChan)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	endpoints = append(endpoints, network.EndpointInfo{
-		Address:  serverAddress,
-		Port:     config.WebsocketPort,
+		Address:  serverInfo.Address,
+		Port:     config.GameServerGamePort,
 		Protocol: "ws",
 	})
 
@@ -70,7 +78,7 @@ func main() {
 	fmt.Println("Starting comm hub serve")
 	go commHub.Serve(handshake)
 
-	if err := api.Start(config.ApiPort, gameManager); err != nil {
+	if err := api.Start(config.GameServerApiPort, gameManager); err != nil {
 		log.Fatal("Error while initializing web API ", err)
 		return
 	}
