@@ -16,9 +16,15 @@ func loadServerInfo() (serverInfo, error) {
 		return serverInfo{}, err
 	}
 
+	//ip, err := findIpAddress()
+
 	return serverInfo{
 		Name:     hostname,
 		HostName: hostname,
 		Address:  hostname,
 	}, nil
+}
+
+func findIpAddress() (string, error) {
+	return "", nil
 }
