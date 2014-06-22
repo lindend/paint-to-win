@@ -1,24 +1,24 @@
-package main
+package server
 
 import (
 	"os"
 )
 
-type serverInfo struct {
+type ServerInfo struct {
 	Name     string
 	HostName string
 	Address  string
 }
 
-func loadServerInfo() (serverInfo, error) {
+func LoadServerInfo() (ServerInfo, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
-		return serverInfo{}, err
+		return ServerInfo{}, err
 	}
 
 	//ip, err := findIpAddress()
 
-	return serverInfo{
+	return ServerInfo{
 		Name:     hostname,
 		HostName: hostname,
 		Address:  hostname,

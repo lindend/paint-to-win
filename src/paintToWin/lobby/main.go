@@ -1,18 +1,49 @@
 package main
 
 import (
-	"github.com/gorilla/mux"
+	"flag"
+	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
-	"paintToWin/lobby/api"
-	"paintToWin/storage"
 	"time"
+
+	"github.com/gorilla/mux"
+
+	"paintToWin/lobby/api"
+	"paintToWin/server"
+	"paintToWin/settings"
+	"paintToWin/storage"
 )
 
 func main() {
-	store, err := storage.NewStorage("user=p2wuser password=devpassword host=xena port=5432 dbname=paint2win sslmode=disable",
-		"10.10.0.98:6379")
+	var dbConnectionString string
+
+	flag.StringVar(&dbConnectionString, "db", "", "connection string for the database")
+	flag.Parse()
+
+	fmt.Println("Initializing db")
+	database, err := storage.InitializeDatabase(dbConnectionString)
+	if err != nil {
+		log.Fatal("Unable to initialize db ", err)
+		return
+	}
+
+	serverInfo, err := server.LoadServerInfo()
+	if err != nil {
+		log.Fatal("Unable to load server info")
+		return
+	}
+
+	fmt.Println("Loading config")
+	config := Config{}
+	if err = settings.Load(serverInfo.Name, database, &config); err != nil {
+		log.Fatal("Error while loading config: \n" + err.Error())
+		return
+	}
+
+	fmt.Println("")
+	store, err := storage.NewStorage(&database, config.RedisAddress)
 	if err != nil {
 		log.Fatal("Unable to initialize storage ", err)
 		return
@@ -25,5 +56,6 @@ func main() {
 	api.RegisterUserApi(router, store)
 	api.RegisterGameApi(router, store)
 
-	log.Fatal(http.ListenAndServe(":8083", router))
+	fmt.Println("Listening on port ")
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", config.LobbyApiPort), router))
 }

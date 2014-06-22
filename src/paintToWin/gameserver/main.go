@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"time"
@@ -11,12 +12,16 @@ import (
 	"paintToWin/gameserver/gamemanager"
 	"paintToWin/gameserver/network"
 	"paintToWin/gameserver/network/ws"
+	"paintToWin/server"
 	"paintToWin/settings"
 	"paintToWin/storage"
 )
 
 func main() {
-	dbConnectionString := "user=p2wuser password=devpassword host=10.10.0.8 port=5432 dbname=paint2win sslmode=disable"
+	var dbConnectionString string
+
+	flag.StringVar(&dbConnectionString, "db", "", "connection string for the database")
+	flag.Parse()
 
 	idGenerator := StartIdGenerator()
 
@@ -26,7 +31,7 @@ func main() {
 		return
 	}
 
-	serverInfo, err := loadServerInfo()
+	serverInfo, err := server.LoadServerInfo()
 	if err != nil {
 		log.Fatal("Unable to load server info")
 		return
@@ -47,7 +52,7 @@ func main() {
 	database.Where(storage.Server{Name: currentServer.Name}).Assign(currentServer).FirstOrInit(&currentServer)
 	database.Save(&currentServer)
 
-	store, err := storage.NewStorage(dbConnectionString, config.RedisAddress)
+	store, err := storage.NewStorage(&database, config.RedisAddress)
 	if err != nil {
 		log.Fatal("Unable to initialize storage ", err)
 		return

@@ -2,10 +2,12 @@ package settings
 
 import (
 	"errors"
-	"github.com/jinzhu/gorm"
-	"paintToWin/storage"
 	"reflect"
 	"strconv"
+
+	"github.com/jinzhu/gorm"
+
+	"paintToWin/storage"
 )
 
 func Load(serverName string, db gorm.DB, settings interface{}) error {

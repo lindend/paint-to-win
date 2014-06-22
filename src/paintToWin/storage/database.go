@@ -15,7 +15,7 @@ func InitializeDatabase(connectionString string) (gorm.DB, error) {
 		return gorm.DB{}, err
 	}
 
-	database.LogMode(true)
+	//database.LogMode(true)
 	initializeTables(database)
 	return database, nil
 }

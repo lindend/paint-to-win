@@ -11,17 +11,13 @@ type Storage struct {
 	cache *redis.Pool
 }
 
-func NewStorage(dbConnection string, cacheAddress string) (*Storage, error) {
-	db, err := InitializeDatabase(dbConnection)
-	if err != nil {
-		return nil, err
-	}
+func NewStorage(db *gorm.DB, cacheAddress string) (*Storage, error) {
 	cache := redis.NewPool(func() (redis.Conn, error) {
 		return redis.Dial("tcp", cacheAddress)
 	}, 240)
 
 	return &Storage{
-		Db:    &db,
+		Db:    db,
 		cache: cache,
 	}, nil
 }
