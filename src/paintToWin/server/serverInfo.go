@@ -1,13 +1,13 @@
 package server
 
 import (
+	"net"
 	"os"
 )
 
 type ServerInfo struct {
 	Name     string
 	HostName string
-	Address  string
 }
 
 func LoadServerInfo() (ServerInfo, error) {
@@ -16,15 +16,16 @@ func LoadServerInfo() (ServerInfo, error) {
 		return ServerInfo{}, err
 	}
 
-	//ip, err := findIpAddress()
-
 	return ServerInfo{
 		Name:     hostname,
 		HostName: hostname,
-		Address:  hostname,
 	}, nil
 }
 
-func findIpAddress() (string, error) {
-	return "", nil
+func findIpAddress(hostname string) (string, error) {
+	addresses, err := net.LookupHost(hostname)
+	if err != nil {
+		return "", err
+	}
+	return addresses[0], nil
 }

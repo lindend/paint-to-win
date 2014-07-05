@@ -19,8 +19,10 @@ import (
 
 func main() {
 	var dbConnectionString string
+	var address string
 
 	flag.StringVar(&dbConnectionString, "db", "", "connection string for the database")
+	flag.StringVar(&address, "address", "", "remotely accessible address of the server")
 	flag.Parse()
 
 	idGenerator := StartIdGenerator()
@@ -36,6 +38,8 @@ func main() {
 		log.Fatal("Unable to load server info")
 		return
 	}
+
+	fmt.Println("Server info: ", serverInfo)
 
 	config := Config{}
 	if err = settings.Load(serverInfo.Name, database, &config); err != nil {
@@ -70,7 +74,7 @@ func main() {
 		return
 	}
 	endpoints = append(endpoints, network.EndpointInfo{
-		Address:  serverInfo.Address,
+		Address:  address,
 		Port:     config.GameServerGamePort,
 		Protocol: "ws",
 	})
