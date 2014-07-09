@@ -11,6 +11,22 @@ var EmailAlreadyInUseError = errors.New("Email is already in use")
 var UsernameAlreadyTakenError = errors.New("Username already taken")
 var InvalidUsernameOrPassword = errors.New("Invalid username or password")
 
+func makeSessionPlayer(player *storage.Player) *storage.SessionPlayer {
+	return &storage.SessionPlayer{
+		PlayerName: player.UserName,
+		IsGuest:    false,
+		UserId:     player.Id,
+	}
+}
+
+func makeGuestSessionPlayer(userName string, userId int64) *storage.SessionPlayer {
+	return &storage.SessionPlayer{
+		PlayerName: userName,
+		IsGuest:    true,
+		UserId:     userId,
+	}
+}
+
 func CreateAccount(store *storage.Storage, name string, email string, password string) error {
 	salt := crypto.GenerateSalt()
 	passwordHash := crypto.HashPassword(password, salt)
@@ -39,10 +55,20 @@ func Login(store *storage.Storage, email string, password string) (storage.Sessi
 
 	session := storage.Session{
 		Id:     crypto.GenerateSessionId(),
-		Player: player,
+		Player: makeSessionPlayer(player),
 	}
 
 	store.SaveInCache("session:"+session.Id, session, 3600)
 
+	return session, nil
+}
+
+func GuestLogin(store *storage.Storage, name string) (storage.Session, error) {
+
+	session := storage.Session{
+		Id:     crypto.GenerateSessionId(),
+		Player: makeGuestSessionPlayer(name, 0),
+	}
+	store.SaveInCache("session:"+session.Id, session, 3600)
 	return session, nil
 }

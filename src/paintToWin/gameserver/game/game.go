@@ -87,8 +87,9 @@ func (game *Game) activateState() {
 	for _, player := range game.Players {
 		if !player.HasLeft {
 			players = append(players, MessagePlayer{
-				Id:   player.TempId,
-				Name: player.Name,
+				Id:      player.TempId,
+				Name:    player.Name,
+				IsGuest: player.IsGuest,
 			})
 		}
 	}
@@ -116,16 +117,18 @@ func (game *Game) timeLeft() int {
 func (game *Game) addPlayer(player *Player) {
 	players := make([]MessagePlayer, 0, len(game.Players))
 	msgPlayer := MessagePlayer{
-		Id:   player.TempId,
-		Name: player.Name,
+		Id:      player.TempId,
+		Name:    player.Name,
+		IsGuest: player.IsGuest,
 	}
 
 	joinMessage := NewPlayerJoinMessage(msgPlayer)
 	for _, p := range game.Players {
 		p.OutData <- joinMessage
 		players = append(players, MessagePlayer{
-			Id:   p.TempId,
-			Name: p.Name,
+			Id:      p.TempId,
+			Name:    p.Name,
+			IsGuest: p.IsGuest,
 		})
 	}
 

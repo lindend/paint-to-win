@@ -16,8 +16,9 @@ type InMessage struct {
 }
 
 type MessagePlayer struct {
-	Id   string
-	Name string
+	Id      string
+	Name    string
+	IsGuest bool
 }
 
 type WelcomeMessage struct {

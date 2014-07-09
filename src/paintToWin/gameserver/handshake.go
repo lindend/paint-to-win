@@ -29,12 +29,19 @@ func CreateClientHandshake(gameManager *gamemanager.GameManager, store *storage.
 			return nil, ""
 		}
 
-		storagePlayer := storage.Player{}
-		if err := store.FirstWhere(storage.Player{Id: session.Player.Id}, &storagePlayer); err != nil {
-			fmt.Println("Handshake: no such player")
-			return nil, ""
+		var playerName string
+		if !session.Player.IsGuest {
+			storagePlayer := storage.Player{}
+			if err := store.FirstWhere(storage.Player{Id: session.Player.UserId}, &storagePlayer); err != nil {
+				fmt.Println("Handshake: no such player")
+				return nil, ""
+			}
+			playerName = storagePlayer.UserName
+		} else {
+			playerName = session.Player.PlayerName
 		}
-		player := game.NewPlayer(storagePlayer.UserName, false, reservationId, <-idGenerator, playerOutData)
+
+		player := game.NewPlayer(playerName, session.Player.IsGuest, reservationId, <-idGenerator, playerOutData)
 
 		if g, err := gameManager.ClaimSpot(reservationId); err != nil {
 			fmt.Println("Handshake: no such reservation")
