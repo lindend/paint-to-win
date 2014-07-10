@@ -56,9 +56,8 @@ func ReserveHandler(gameManager *gamemanager.GameManager) web.RequestHandler {
 	return func(req *http.Request) (interface{}, web.ApiError) {
 		vars := mux.Vars(req)
 		gameId := vars["gameId"]
-		playerId := vars["playerId"]
 
-		reservationId, err := gameManager.ReserveSpot(playerId, gameId)
+		reservationId, err := gameManager.ReserveSpot(gameId)
 		if err != nil {
 			return nil, web.NewApiError(http.StatusInternalServerError, err.Error())
 		} else {
@@ -69,5 +68,5 @@ func ReserveHandler(gameManager *gamemanager.GameManager) web.RequestHandler {
 
 func RegisterGameManagerApi(router *mux.Router, gameManager *gamemanager.GameManager) {
 	router.HandleFunc("/games/create", web.DefaultHandler(CreateHandler(gameManager))).Methods("POST", "OPTIONS")
-	router.HandleFunc("/games/{gameId}/reserve/{playerId}", web.DefaultHandler(ReserveHandler(gameManager))).Methods("POST", "OPTIONS")
+	router.HandleFunc("/games/{gameId}/reserve", web.DefaultHandler(ReserveHandler(gameManager))).Methods("POST", "OPTIONS")
 }

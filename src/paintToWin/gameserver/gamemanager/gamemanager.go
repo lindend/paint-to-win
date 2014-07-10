@@ -86,7 +86,7 @@ func (gameManager *GameManager) CreateGame() (*storage.Game, error) {
 	return storageGame, nil
 }
 
-func (gameManager *GameManager) ReserveSpot(playerName string, gameId string) (string, error) {
+func (gameManager *GameManager) ReserveSpot(gameId string) (string, error) {
 	gameManager.syncLock.Lock()
 	defer gameManager.syncLock.Unlock()
 
@@ -95,7 +95,7 @@ func (gameManager *GameManager) ReserveSpot(playerName string, gameId string) (s
 		return "", GameDoesNotExistError
 	}
 
-	reservationId := <-gameManager.idGenerator + <-gameManager.idGenerator + playerName
+	reservationId := <-gameManager.idGenerator + <-gameManager.idGenerator
 	gameManager.reservations[reservationId] = g
 
 	go func() {

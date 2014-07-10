@@ -55,12 +55,10 @@ func JoinGame(gameId string, store *storage.Storage, session *storage.Session) (
 		return api.ReservationOutput{}, err
 	}
 
-	playerId := session.Player.Id
-
 	result := api.ReservationOutput{}
 	var errResult string
-	if err := web.Post(fmt.Sprintf("%v/games/%v/reserve/%v", game.HostedOn,
-		game.GameId, playerId), nil, &result, &errResult); err != nil {
+	if err := web.Post(fmt.Sprintf("%v/games/%v/reserve", game.HostedOn,
+		game.GameId), nil, &result, &errResult); err != nil {
 		return api.ReservationOutput{}, err
 	}
 

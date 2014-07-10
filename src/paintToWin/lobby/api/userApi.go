@@ -12,6 +12,15 @@ import (
 )
 
 const LoginResult_InvalidUserNameOrPassword = "InvalidUsernameOrPassword"
+const LoginResult_GuestUnknownLoginError = "GuestUnknownLoginError"
+
+type GuestLoginInput struct {
+	PlayerName string `json:"playerName" binding:"required"`
+}
+
+func (guestLoginInput GuestLoginInput) Validate() []web.InputError {
+	return []web.InputError{}
+}
 
 type LoginInput struct {
 	Email    string `json:"email" binding:"required"`
@@ -71,7 +80,24 @@ func LoginHandler(store *storage.Storage) web.RequestHandler {
 		if userSession, err := user.Login(store, input.Email, input.Password); err != nil {
 			return nil, web.NewApiError(http.StatusUnauthorized, LoginResult_InvalidUserNameOrPassword)
 		} else {
-			return NewSession(userSession.Id, userSession.Player.UserName), nil
+			return NewSession(userSession.Id, userSession.Player.PlayerName), nil
+		}
+	}
+}
+
+func GuestLoginHandler(store *storage.Storage) web.RequestHandler {
+	return func(req *http.Request) (interface{}, web.ApiError) {
+		var input GuestLoginInput
+		if inputErrs, err := web.DeserializeAndValidateInput(req, &input); err != nil {
+			return nil, web.NewApiError(http.StatusBadRequest, err)
+		} else if inputErrs != nil && len(inputErrs) > 0 {
+			return nil, web.NewApiError(http.StatusBadRequest, inputErrs)
+		}
+
+		if userSession, err := user.GuestLogin(store, input.PlayerName); err != nil {
+			return nil, web.NewApiError(http.StatusUnauthorized, LoginResult_GuestUnknownLoginError)
+		} else {
+			return NewSession(userSession.Id, userSession.Player.PlayerName), nil
 		}
 	}
 }
@@ -79,4 +105,5 @@ func LoginHandler(store *storage.Storage) web.RequestHandler {
 func RegisterUserApi(router *mux.Router, store *storage.Storage) {
 	router.HandleFunc("/users/create", web.DefaultHandler(CreateUserHandler(store))).Methods("POST", "OPTIONS")
 	router.HandleFunc("/users/login", web.DefaultHandler(LoginHandler(store))).Methods("POST", "OPTIONS")
+	router.HandleFunc("/users/guestLogin", web.DefaultHandler(GuestLoginHandler(store))).Methods("POST", "OPTIONS")
 }
