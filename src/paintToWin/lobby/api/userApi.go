@@ -65,7 +65,11 @@ func CreateUserHandler(store *storage.Storage) web.RequestHandler {
 		}
 
 		err := user.CreateAccount(store, input.UserName, input.Email, input.Password)
-		return nil, web.NewApiError(http.StatusInternalServerError, err.Error())
+		if err != nil {
+			return nil, web.NewApiError(http.StatusInternalServerError, err.Error())
+		} else {
+			return true, nil
+		}
 	}
 }
 

@@ -15,6 +15,17 @@ type JoinGameInput struct {
 	GameId string
 }
 
+type CreateGameInput struct {
+	Name      string `json: "name"`
+	Mode      string `json: "mode"`
+	IsPrivate bool   `json: "isPrivate"`
+	Password  string `json: "password"`
+}
+
+func (input *CreateGameInput) Validate() []web.InputError {
+	return []web.InputError{}
+}
+
 func ListGamesHandler(store *storage.Storage) web.RequestHandler {
 	return func(req *http.Request) (interface{}, web.ApiError) {
 		activeGames, _ := game.GetActiveGames(store)
