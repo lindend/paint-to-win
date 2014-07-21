@@ -3,7 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"os"
+	"runtime"
 	"time"
 
 	"paintToWin/gameserver/api"
@@ -20,10 +23,14 @@ import (
 func main() {
 	var dbConnectionString string
 	var address string
+	var cpuprofile string
 
 	flag.StringVar(&dbConnectionString, "db", "", "connection string for the database")
 	flag.StringVar(&address, "address", "", "remotely accessible address of the server")
+	flag.StringVar(&cpuprofile, "cpuprofile", "", "path to cpu profile output")
 	flag.Parse()
+
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	idGenerator := StartIdGenerator()
 
@@ -100,10 +107,22 @@ func main() {
 		}
 	}()
 
-	fmt.Println("Game server successfully started")
-	for {
-		time.Sleep(1000)
+	fmt.Println("Initializing profiling")
+	if err := initProfiling(cpuprofile); err != nil {
+		fmt.Println("Could not initialize profiling", err)
+	} else {
+		fmt.Println("Profiling initialized")
+		defer func() {
+			fmt.Println("Stopping profiling")
+			stopProfiling()
+		}()
 	}
+
+	fmt.Println("Game server successfully started")
+	//for {
+	time.Sleep(1000)
+	ioutil.ReadAll(os.Stdin)
+	//}
 }
 
 func startWebsocketEndpoint(port int, onMessage chan communication.Message, onConnect chan network.NewConnection, onDisconnect chan network.Connection) error {

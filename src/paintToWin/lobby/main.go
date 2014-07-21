@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"runtime"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -21,6 +22,8 @@ func main() {
 
 	flag.StringVar(&dbConnectionString, "db", "", "connection string for the database")
 	flag.Parse()
+
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	fmt.Println("Initializing db")
 	database, err := storage.InitializeDatabase(dbConnectionString)

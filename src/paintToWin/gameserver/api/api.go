@@ -2,9 +2,11 @@ package api
 
 import (
 	"fmt"
-	"github.com/gorilla/mux"
 	"log"
 	"net/http"
+
+	"github.com/gorilla/mux"
+
 	"paintToWin/gameserver/gamemanager"
 )
 
