@@ -11,41 +11,43 @@ import (
 )
 
 type WsEndpoint struct {
-	OnData       chan network.Packet
-	OnConnect    chan network.NewConnection
-	OnDisconnect chan network.Connection
+	OnConnect chan network.NewConnection
 
-	connections map[WsConnection]bool
+	connections map[WsConnection]struct{}
 }
 
 type WsConnection struct {
-	socket *websocket.Conn
+	socket     *websocket.Conn
+	connection network.Connection
 }
 
-func (con WsConnection) Send(data []byte) error {
-	return con.socket.WriteMessage(websocket.BinaryMessage, data)
-}
-
-func (con WsConnection) Close() {
-	con.socket.Close()
-}
-
-func (endpoint *WsEndpoint) clientDisconnect(connection WsConnection) {
-	delete(endpoint.connections, connection)
-	endpoint.OnDisconnect <- connection
-}
-
-func (endpoint *WsEndpoint) handleClient(connection *websocket.Conn, variables map[string]string) {
-	wsConn := WsConnection{connection}
-	endpoint.connections[wsConn] = true
+func (endpoint *WsEndpoint) handleClient(socket *websocket.Conn, variables map[string]string) {
+	inData := make(chan network.Packet)
+	outData := make(chan network.Packet)
+	closed := make(chan struct{})
+	connection := network.Connection{
+		InData:  inData,
+		OutData: outData,
+		Closed:  closed,
+	}
+	wsConn := WsConnection{socket, connection}
+	endpoint.connections[wsConn] = struct{}{}
 	endpoint.OnConnect <- network.NewConnection{
-		Connection: wsConn,
+		Connection: connection,
 		Variables:  variables,
 	}
 
-	err := <-socketReceiveLoop(wsConn, endpoint.OnData)
+	go func() {
+		for pkt := range outData {
+			socket.WriteMessage(websocket.BinaryMessage, pkt.Data)
+		}
+		socket.Close()
+	}()
+
+	err := <-socketReceiveLoop(wsConn, inData)
+	close(closed)
 	fmt.Println("Client disconnected ", err)
-	endpoint.clientDisconnect(wsConn)
+	delete(endpoint.connections, wsConn)
 }
 
 func socketReceiveLoop(connection WsConnection, onData chan<- network.Packet) chan error {
@@ -58,7 +60,7 @@ func socketReceiveLoop(connection WsConnection, onData chan<- network.Packet) ch
 				break
 			}
 			fmt.Println("Data received WsEndpoint.go")
-			var message = network.Packet{data, connection}
+			var message = network.Packet{data, connection.connection}
 			onData <- message
 		}
 	}()
@@ -67,10 +69,8 @@ func socketReceiveLoop(connection WsConnection, onData chan<- network.Packet) ch
 
 func StartWebSocketServer(port int, paths []string) (WsEndpoint, error) {
 	endpoint := WsEndpoint{
-		make(chan network.Packet),
 		make(chan network.NewConnection),
-		make(chan network.Connection),
-		make(map[WsConnection]bool),
+		make(map[WsConnection]struct{}),
 	}
 
 	upgrader := websocket.Upgrader{

@@ -8,7 +8,10 @@ import (
 
 var PlayerNotFoundError = errors.New("Player not found")
 
-type messageHandler func(from *Player, message Message)
+type inMessage struct {
+	Message Message
+	Source  *Player
+}
 
 type Game struct {
 	Id      string
@@ -16,9 +19,10 @@ type Game struct {
 	Score   map[*Player]int
 	Players []*Player
 
-	InData      chan InMessage
-	PlayerJoin  chan *Player
-	PlayerLeave chan *Player
+	inData      chan inMessage
+	playerJoin  chan *Player
+	playerLeave chan *Player
+	closed      chan struct{}
 
 	NumRounds    int
 	CurrentRound int
@@ -37,9 +41,10 @@ func NewGame(id string, state GameState) *Game {
 		Score:   make(map[*Player]int),
 		Players: make([]*Player, 0),
 
-		InData:      make(chan InMessage),
-		PlayerJoin:  make(chan *Player),
-		PlayerLeave: make(chan *Player),
+		inData:      make(chan inMessage),
+		playerJoin:  make(chan *Player),
+		playerLeave: make(chan *Player),
+		closed:      make(chan struct{}),
 
 		NumRounds:    10,
 		CurrentRound: 0,
@@ -52,6 +57,33 @@ func NewGame(id string, state GameState) *Game {
 	}
 	g.setupMessageHandlers()
 	return g
+}
+
+func (game *Game) OnData(from *Player, message Message) bool {
+	select {
+	case game.inData <- inMessage{message, from}:
+		return true
+	case <-game.closed:
+		return false
+	}
+}
+
+func (game *Game) PlayerLeft(player *Player) bool {
+	select {
+	case game.playerLeave <- player:
+		return true
+	case <-game.closed:
+		return false
+	}
+}
+
+func (game *Game) PlayerJoin(player *Player) bool {
+	select {
+	case game.playerJoin <- player:
+		return true
+	case <-game.closed:
+		return false
+	}
 }
 
 func (game *Game) setupMessageHandlers() {
@@ -206,22 +238,26 @@ func (game *Game) Run() {
 		case <-game.timeout:
 			fmt.Println("Timeout occurred")
 			game.ActiveState().Timeout()
-		case player := <-game.PlayerJoin:
+		case player := <-game.playerJoin:
 			game.addPlayer(player)
 			game.ActiveState().PlayerJoin(player)
-		case player := <-game.PlayerLeave:
+		case player := <-game.playerLeave:
 			fmt.Println("Player left (game)")
 			player.HasLeft = true
 			game.ActiveState().PlayerLeave(player)
 			game.RemovePlayer(player)
-		case message, ok := <-game.InData:
+		case message, ok := <-game.inData:
 			if !ok {
 				break
 			} else if !game.handleMessage(message) {
-				game.ActiveState().Message(message)
+				game.ActiveState().Message(message.Source, message.Message)
 			}
 		}
 	}
+	for _, player := range game.Players {
+		close(player.OutData)
+	}
+	close(game.closed)
 	fmt.Println("Game stopped")
 }
 
@@ -236,7 +272,7 @@ func (game *Game) playerChat(player *Player, chatMessage *ChatMessage) {
 	}
 }
 
-func (game *Game) handleMessage(message InMessage) bool {
-	err := game.messageHandler.Handle(message)
+func (game *Game) handleMessage(message inMessage) bool {
+	err := game.messageHandler.Handle(message.Source, message.Message)
 	return err == nil
 }

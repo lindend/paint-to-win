@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"paintToWin/gameserver/codec"
-	"paintToWin/gameserver/communication"
 	"paintToWin/gameserver/game"
 	"paintToWin/gameserver/gamestate"
 	"paintToWin/gameserver/network"
@@ -33,26 +31,23 @@ type GameManager struct {
 	reservations map[string]*gameItem
 	server       storage.Server
 
-	communicationHub *communication.CommunicationHub
-	endpoints        []network.EndpointInfo
+	endpoints []network.EndpointInfo
 }
 
 func NewGameManager(
 	idGenerator <-chan string,
 	endpoints []network.EndpointInfo,
-	commHub *communication.CommunicationHub,
 	store *storage.Storage,
 	server storage.Server,
 ) *GameManager {
 	gameManager := GameManager{
-		syncLock:         &sync.Mutex{},
-		games:            make(map[string]*gameItem),
-		reservations:     make(map[string]*gameItem),
-		idGenerator:      idGenerator,
-		storage:          store,
-		endpoints:        endpoints,
-		communicationHub: commHub,
-		server:           server,
+		syncLock:     &sync.Mutex{},
+		games:        make(map[string]*gameItem),
+		reservations: make(map[string]*gameItem),
+		idGenerator:  idGenerator,
+		storage:      store,
+		endpoints:    endpoints,
+		server:       server,
 	}
 	return &gameManager
 }
@@ -62,10 +57,6 @@ func (gameManager *GameManager) CreateGame() (*storage.Game, error) {
 	newGame := game.NewGame(<-gameManager.idGenerator, gamestate.NewInitRoundState())
 	storageGame := ToStorageGame(newGame, true, 0, gameManager.server)
 	gameManager.storage.Save(storageGame)
-
-	gameInput := gameManager.communicationHub.RegisterChannel(newGame.Id)
-	codec.NewGameMessageDecoder(gameInput.InData, newGame.InData)
-	codec.NewDisconnectDecoder(gameInput.Disconnect, newGame.PlayerLeave)
 
 	go func() {
 		defer func() {
@@ -77,6 +68,7 @@ func (gameManager *GameManager) CreateGame() (*storage.Game, error) {
 			gameManager.removeGame(newGame)
 		}()
 		newGame.Run()
+		gameManager.removeGame(newGame)
 	}()
 
 	gameManager.syncLock.Lock()
@@ -108,7 +100,7 @@ func (gameManager *GameManager) ReserveSpot(gameId string) (string, error) {
 	return reservationId, nil
 }
 
-func (gameManager *GameManager) ClaimSpot(reservationId string) (*game.Game, error) {
+func (gameManager *GameManager) ClaimSpot(reservationId string, player *game.Player) (*game.Game, error) {
 	gameManager.syncLock.Lock()
 	defer gameManager.syncLock.Unlock()
 
@@ -117,6 +109,15 @@ func (gameManager *GameManager) ClaimSpot(reservationId string) (*game.Game, err
 		return nil, GameDoesNotExistError
 	}
 	delete(gameManager.reservations, reservationId)
+
+	if _, ok := gameManager.games[g.game.Id]; !ok {
+		return nil, GameDoesNotExistError
+	}
+
+	if !g.game.PlayerJoin(player) {
+		return nil, GameDoesNotExistError
+	}
+
 	return g.game, nil
 }
 

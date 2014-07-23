@@ -42,8 +42,8 @@ func (w WaitForSelectWordState) Timeout() {
 	w.game.Stop()
 }
 
-func (w WaitForSelectWordState) Message(message game.InMessage) {
-	w.messageHandler.Handle(message)
+func (w WaitForSelectWordState) Message(source *game.Player, message game.Message) {
+	w.messageHandler.Handle(source, message)
 }
 
 func (w WaitForSelectWordState) PlayerLeave(player *game.Player) {

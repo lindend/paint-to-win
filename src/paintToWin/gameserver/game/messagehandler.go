@@ -25,13 +25,13 @@ func NewMessageHandler() *MessageHandler {
 	}
 }
 
-func (m MessageHandler) Handle(message InMessage) error {
-	dataType := reflect.TypeOf(message.Message.Data)
+func (m MessageHandler) Handle(from *Player, message Message) error {
+	dataType := reflect.TypeOf(message.Data)
 	if handler, exists := m.Handlers[dataType]; !exists {
 		return NoSuchHandlerError
 	} else {
-		dataValue := reflect.ValueOf(message.Message.Data)
-		playerValue := reflect.ValueOf(message.Source)
+		dataValue := reflect.ValueOf(message.Data)
+		playerValue := reflect.ValueOf(from)
 		handler.Call([]reflect.Value{playerValue, dataValue})
 	}
 	return nil

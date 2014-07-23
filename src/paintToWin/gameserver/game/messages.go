@@ -10,11 +10,6 @@ type Message struct {
 	Data interface{}
 }
 
-type InMessage struct {
-	Message Message
-	Source  *Player
-}
-
 type MessagePlayer struct {
 	Id      string
 	Name    string

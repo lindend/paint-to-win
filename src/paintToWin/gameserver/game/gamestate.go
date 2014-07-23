@@ -5,7 +5,7 @@ type GameState interface {
 	Timeout()
 	Activate(game *Game)
 	Deactivate()
-	Message(message InMessage)
+	Message(player *Player, message Message)
 	PlayerJoin(player *Player)
 	PlayerLeave(player *Player)
 }

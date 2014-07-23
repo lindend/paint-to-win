@@ -2,97 +2,44 @@ package codec
 
 import (
 	"fmt"
-	"paintToWin/gameserver/communication"
 	"paintToWin/gameserver/game"
 	"paintToWin/gameserver/network"
 )
 
-func StandardDecoder(inData <-chan network.Packet) <-chan communication.Message {
-	resultChan := make(chan communication.Message)
-
+func NewGameInDataDecoder(inData <-chan network.Packet, player *game.Player, g *game.Game) {
 	go func() {
-		for {
-			if msg, ok := <-inData; ok {
-				fmt.Println("Standard decoder data")
-				resultChan <- communication.Message{msg.Data, msg.Connection}
-			} else {
-				close(resultChan)
-				break
+		for msg := range inData {
+			gameMsg, err := game.DecodeMessage(msg.Data)
+			if err != nil {
+				fmt.Println("Error while decoding packet", err)
+				continue
+			}
+			if !g.OnData(player, gameMsg) {
+				return
 			}
 		}
-	}()
-
-	return resultChan
-}
-
-func StandardEncoder(inData <-chan communication.Message) <-chan network.Packet {
-	resultChan := make(chan network.Packet)
-
-	go func() {
-		for {
-			if msg, ok := <-inData; ok {
-				fmt.Println("Standard encoder data")
-				resultChan <- network.Packet{msg.Data, msg.Connection}
-			} else {
-				close(resultChan)
-				break
-			}
-		}
-	}()
-
-	return resultChan
-}
-
-func NewGameMessageEncoder(inData <-chan game.Message, outData chan<- communication.Message, connection network.Connection) {
-	go func() {
-		for {
-			if msg, ok := <-inData; ok {
-				fmt.Println("Packet input codec.go")
-				messageData, err := game.EncodeMessage(msg)
-				if err != nil {
-					fmt.Println("Error while encoding message", err)
-				} else {
-					outData <- communication.Message{messageData, connection}
-				}
-			} else {
-				close(outData)
-				break
-			}
-		}
+		g.PlayerLeft(player)
 	}()
 }
 
-func NewGameMessageDecoder(inData <-chan communication.InMessage, outData chan<- game.InMessage) {
+func NewGameOutDataEncoder(connection network.Connection) chan<- game.Message {
+	gameOutChan := make(chan game.Message)
 	go func() {
-		for {
-			if msg, ok := <-inData; ok {
-				player := msg.Entity.(*game.Player)
-				gameMsg, err := game.DecodeMessage(msg.Data)
-				if err == nil {
-					outData <- game.InMessage{gameMsg, player}
-				} else {
-					fmt.Println("Error while decoding packet ", err)
-				}
-			} else {
-				close(outData)
-				break
+		for gameMsg := range gameOutChan {
+			data, err := game.EncodeMessage(gameMsg)
+			if err != nil {
+				fmt.Println("Error while encoding packet", err)
+			}
+			pkt := network.Packet{
+				Data:       data,
+				Connection: connection,
+			}
+			select {
+			case connection.OutData <- pkt:
+			case <-connection.Closed:
 			}
 		}
+		close(connection.OutData)
 	}()
-}
-
-func NewDisconnectDecoder(disconnect <-chan interface{}, outDisconnect chan<- *game.Player) {
-	go func() {
-		for {
-			fmt.Println("Disconnect decoder on ", disconnect)
-			if entity, ok := <-disconnect; ok {
-				player := entity.(*game.Player)
-				fmt.Println(player, "disconnected (codec)")
-				outDisconnect <- player
-			} else {
-				close(outDisconnect)
-				break
-			}
-		}
-	}()
+	return gameOutChan
 }

@@ -2,9 +2,10 @@ package network
 
 import ()
 
-type Connection interface {
-	Close()
-	Send(data []byte) error
+type Connection struct {
+	InData  <-chan Packet
+	OutData chan<- Packet
+	Closed  chan struct{}
 }
 
 type NewConnection struct {

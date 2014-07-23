@@ -50,8 +50,8 @@ func (p *PlayGameState) Activate(g *game.Game) {
 	p.context.drawingPlayer.OutData <- game.NewTurnToPaintMessage(p.context.word)
 }
 
-func (p PlayGameState) Message(message game.InMessage) {
-	p.messageHandler.Handle(message)
+func (p PlayGameState) Message(source *game.Player, message game.Message) {
+	p.messageHandler.Handle(source, message)
 }
 
 func (p PlayGameState) PlayerLeave(player *game.Player) {

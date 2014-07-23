@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"paintToWin/gameserver/api"
-	"paintToWin/gameserver/codec"
-	"paintToWin/gameserver/communication"
 	"paintToWin/gameserver/gamemanager"
 	"paintToWin/gameserver/network"
 	"paintToWin/gameserver/network/ws"
@@ -69,13 +67,11 @@ func main() {
 		return
 	}
 
-	messageChan := make(chan communication.Message)
 	connectChan := make(chan network.NewConnection)
-	disconnectChan := make(chan network.Connection)
 
 	endpoints := []network.EndpointInfo{}
 
-	err = startWebsocketEndpoint(config.GameServerGamePort, messageChan, connectChan, disconnectChan)
+	err = startWebsocketEndpoint(config.GameServerGamePort, connectChan)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -86,26 +82,18 @@ func main() {
 		Protocol: "ws",
 	})
 
-	commHub, commOutData := startCommunicationHub(messageChan, connectChan, disconnectChan)
-	gameManager := gamemanager.NewGameManager(idGenerator, endpoints, commHub, store, currentServer)
+	gameManager := gamemanager.NewGameManager(idGenerator, endpoints, store, currentServer)
 
-	handshake := CreateClientHandshake(gameManager, store, idGenerator)
-
-	fmt.Println("Starting comm hub serve")
-	go commHub.Serve(handshake)
+	go func() {
+		for connection := range connectChan {
+			ClientHandshake(gameManager, store, idGenerator, connection)
+		}
+	}()
 
 	if err := api.Start(config.GameServerApiPort, gameManager); err != nil {
 		log.Fatal("Error while initializing web API ", err)
 		return
 	}
-
-	go func() {
-		for {
-			msg := <-commOutData
-			fmt.Println("Packet output main.go")
-			msg.Connection.Send(msg.Data)
-		}
-	}()
 
 	fmt.Println("Initializing profiling")
 	if err := initProfiling(cpuprofile); err != nil {
@@ -125,41 +113,16 @@ func main() {
 	//}
 }
 
-func startWebsocketEndpoint(port int, onMessage chan communication.Message, onConnect chan network.NewConnection, onDisconnect chan network.Connection) error {
+func startWebsocketEndpoint(port int, onConnect chan network.NewConnection) error {
 	fmt.Println("Starting web socket server")
 	wsEndpoint, err := ws.StartWebSocketServer(port, []string{"/{reservationId}/{sessionId}"})
 	if err != nil {
 		return err
 	}
-	wsCodec := codec.StandardDecoder(wsEndpoint.OnData)
 
-	mergeOnMessage(wsCodec, onMessage)
 	mergeNewConnection(wsEndpoint.OnConnect, onConnect)
-	mergeConnect(wsEndpoint.OnDisconnect, onDisconnect)
 	fmt.Println("Successfully started web socket server")
 	return nil
-}
-
-func startCommunicationHub(
-	onMessage chan communication.Message,
-	onConnect chan network.NewConnection,
-	onDisconnect chan network.Connection,
-) (*communication.CommunicationHub, <-chan communication.Message) {
-
-	fmt.Println("Starting communication hub")
-	commHub, commChan := communication.NewCommunicationHub(onConnect, onDisconnect, onMessage)
-	fmt.Println("Successfully started communication hub")
-	return commHub, commChan
-}
-
-func mergeOnMessage(inNewMessage <-chan communication.Message, mergedChan chan<- communication.Message) {
-	go func() {
-		for {
-			msg := <-inNewMessage
-			fmt.Println("new message main.go")
-			mergedChan <- msg
-		}
-	}()
 }
 
 func mergeNewConnection(newConnect <-chan network.NewConnection, merged chan<- network.NewConnection) {
@@ -167,15 +130,6 @@ func mergeNewConnection(newConnect <-chan network.NewConnection, merged chan<- n
 		for {
 			conn := <-newConnect
 			merged <- conn
-		}
-	}()
-}
-
-func mergeConnect(newDisconnec <-chan network.Connection, mergedChan chan<- network.Connection) {
-	go func() {
-		for {
-			conn := <-newDisconnec
-			mergedChan <- conn
 		}
 	}()
 }

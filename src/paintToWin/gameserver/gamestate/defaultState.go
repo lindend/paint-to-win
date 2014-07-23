@@ -25,7 +25,7 @@ func (d DefaultDeactivate) Deactivate() {
 type DefaultMessageHandling struct {
 }
 
-func (d DefaultMessageHandling) Message(message game.InMessage) {
+func (d DefaultMessageHandling) Message(source *game.Player, message game.Message) {
 }
 
 type DefaultPlayerJoin struct {
