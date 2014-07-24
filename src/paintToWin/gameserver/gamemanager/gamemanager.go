@@ -3,6 +3,7 @@ package gamemanager
 import (
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -61,6 +62,7 @@ func (gameManager *GameManager) CreateGame() (*storage.Game, error) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
+				fmt.Println("Fatal error while serving game", r, string(debug.Stack()))
 			}
 
 			storageGame.IsActive = false

@@ -60,7 +60,6 @@ func socketReceiveLoop(connection WsConnection, onData chan<- network.Packet) ch
 				onError <- err
 				break
 			}
-			fmt.Println("Data received WsEndpoint.go")
 			var message = network.Packet{data, connection.connection}
 			onData <- message
 		}

@@ -191,9 +191,7 @@ func (game *Game) PreviousPlayer(player *Player) *Player {
 
 func (game *Game) nextPlayerInGame(player *Player, step int) *Player {
 	if playerIndex, err := game.findPlayer(player); err == nil {
-		i := playerIndex
-		for i != playerIndex {
-			i += step
+		for i := playerIndex + step; i != playerIndex; i += step {
 			if i < 0 {
 				i = len(game.Players) - 1
 			} else if i >= len(game.Players) {
