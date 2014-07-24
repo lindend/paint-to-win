@@ -18,6 +18,7 @@ func NewGameInDataDecoder(inData <-chan network.Packet, player *game.Player, g *
 				return
 			}
 		}
+		fmt.Println("GameInDataDecoder: player left", player.Name)
 		g.PlayerLeft(player)
 	}()
 }

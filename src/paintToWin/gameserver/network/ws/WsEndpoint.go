@@ -45,6 +45,7 @@ func (endpoint *WsEndpoint) handleClient(socket *websocket.Conn, variables map[s
 	}()
 
 	err := <-socketReceiveLoop(wsConn, inData)
+	close(inData)
 	close(closed)
 	fmt.Println("Client disconnected ", err)
 	delete(endpoint.connections, wsConn)
