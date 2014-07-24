@@ -17,7 +17,7 @@ type Game struct {
 	Id      string
 	Name    string
 	Score   map[*Player]int
-	Players []*Player
+	Players PlayerList
 
 	inData      chan inMessage
 	playerJoin  chan *Player
@@ -142,6 +142,12 @@ func (game *Game) SetTimeout(timeout time.Duration) {
 	game.timeout = time.After(timeout)
 }
 
+func (g *Game) Broadcast(message Message) {
+	for _, p := range g.Players {
+		p.OutData <- message
+	}
+}
+
 func (game *Game) timeLeft() int {
 	return 0
 }
@@ -172,52 +178,8 @@ func (game *Game) addPlayer(player *Player) {
 }
 
 func (game *Game) RemovePlayer(player *Player) {
-	for i, pl := range game.Players {
-		if pl == player {
-			game.Players = append(game.Players[:i], game.Players[i+1:]...)
-			break
-		}
-	}
+	game.Players = game.Players.Remove(player)
 	game.Broadcast(NewPlayerLeaveMessage(player.Name))
-}
-
-func (game *Game) NextPlayer(player *Player) *Player {
-	return game.nextPlayerInGame(player, 1)
-}
-
-func (game *Game) PreviousPlayer(player *Player) *Player {
-	return game.nextPlayerInGame(player, -1)
-}
-
-func (game *Game) nextPlayerInGame(player *Player, step int) *Player {
-	if playerIndex, err := game.findPlayer(player); err == nil {
-		for i := playerIndex + step; i != playerIndex; i += step {
-			if i < 0 {
-				i = len(game.Players) - 1
-			} else if i >= len(game.Players) {
-				i = 0
-			}
-			if !game.Players[i].HasLeft {
-				return game.Players[i]
-			}
-		}
-	}
-	return nil
-}
-
-func (game *Game) findPlayer(player *Player) (int, error) {
-	for i, pl := range game.Players {
-		if pl == player {
-			return i, nil
-		}
-	}
-	return 0, PlayerNotFoundError
-}
-
-func (game *Game) Broadcast(message Message) {
-	for _, p := range game.Players {
-		p.OutData <- message
-	}
 }
 
 func (game *Game) Strokes(from *Player, strokes []Stroke) {

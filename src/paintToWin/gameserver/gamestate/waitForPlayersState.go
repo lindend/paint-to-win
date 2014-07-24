@@ -46,6 +46,6 @@ func (w WaitForPlayersState) PlayerJoin(player *game.Player) {
 
 func (w WaitForPlayersState) PlayerLeave(player *game.Player) {
 	if player == w.context.drawingPlayer {
-		w.context.drawingPlayer = w.game.NextPlayer(w.context.drawingPlayer)
+		w.context.drawingPlayer = w.game.Players.NextPlayer(w.context.drawingPlayer)
 	}
 }

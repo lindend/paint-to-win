@@ -48,7 +48,7 @@ func (w WaitForSelectWordState) Message(source *game.Player, message game.Messag
 
 func (w WaitForSelectWordState) PlayerLeave(player *game.Player) {
 	if player == w.context.drawingPlayer {
-		w.context.drawingPlayer = w.game.NextPlayer(w.context.drawingPlayer)
+		w.context.drawingPlayer = w.game.Players.NextPlayer(w.context.drawingPlayer)
 		w.game.SwapState(newInitRoundState(w.context))
 	} else if player == w.context.choosingPlayer {
 		w.game.SwapState(newInitRoundState(w.context))
