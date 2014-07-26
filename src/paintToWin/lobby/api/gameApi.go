@@ -17,7 +17,6 @@ type JoinGameInput struct {
 
 type CreateGameInput struct {
 	Name      string `json: "name"`
-	Mode      string `json: "mode"`
 	IsPrivate bool   `json: "isPrivate"`
 	Password  string `json: "password"`
 }
@@ -39,7 +38,15 @@ func ListGamesHandler(store *storage.Storage) web.RequestHandler {
 
 func CreateGameHandler(store *storage.Storage) web.RequestHandler {
 	return func(req *http.Request) (interface{}, web.ApiError) {
-		createdGame, _ := game.CreateGame(store)
+		var input CreateGameInput
+		inputErrs, err := web.DeserializeAndValidateInput(req, &input)
+		if err != nil {
+			return nil, web.NewApiError(http.StatusBadRequest, err)
+		} else if inputErrs != nil {
+			return nil, web.NewApiError(http.StatusBadRequest, inputErrs)
+		}
+
+		createdGame, _ := game.CreateGame(store, input.Name, input.Password)
 		return NewGame(createdGame), nil
 	}
 }

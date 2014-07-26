@@ -53,9 +53,10 @@ func NewGameManager(
 	return &gameManager
 }
 
-func (gameManager *GameManager) CreateGame() (*storage.Game, error) {
+func (gameManager *GameManager) CreateGame(name string) (*storage.Game, error) {
 	fmt.Println("Creating new game")
 	newGame := game.NewGame(<-gameManager.idGenerator, gamestate.NewInitRoundState())
+	newGame.Name = name
 	storageGame := ToStorageGame(newGame, true, 0, gameManager.server)
 	gameManager.storage.Save(storageGame)
 

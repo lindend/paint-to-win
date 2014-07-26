@@ -12,6 +12,8 @@ import (
 )
 
 type CreateGameInput struct {
+	Name     string
+	Password string
 }
 
 type CreateGameOutput struct {
@@ -39,7 +41,13 @@ func NewReservationOutput(gameId string, reservationId string, endpoints []netwo
 
 func CreateHandler(gameManager *gamemanager.GameManager) web.RequestHandler {
 	return func(req *http.Request) (interface{}, web.ApiError) {
-		g, err := gameManager.CreateGame()
+		var input CreateGameInput
+		err := web.DeserializeInput(req, &input)
+		if err != nil {
+			return nil, web.NewApiError(http.StatusBadRequest, err)
+		}
+
+		g, err := gameManager.CreateGame(input.Name)
 		fmt.Println("Created game ", g, err)
 		if err != nil {
 			return nil, web.NewApiError(http.StatusInternalServerError, "")

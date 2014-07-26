@@ -21,7 +21,7 @@ func removeGameServer(server *storage.Server) {
 
 }
 
-func CreateGame(store *storage.Storage) (storage.Game, error) {
+func CreateGame(store *storage.Storage, name string, password string) (storage.Game, error) {
 	var gameServers []storage.Server
 	if err := store.Where(&storage.Server{Type: "gameserver"}, &gameServers); err != nil {
 		return storage.Game{}, err
@@ -39,10 +39,14 @@ func CreateGame(store *storage.Storage) (storage.Game, error) {
 		result := api.CreateGameOutput{}
 		var errResult string
 		fmt.Println("Creating game on ", gameServer.Address+"/games/create")
-		if err = web.Post(gameServer.Address+"/games/create", nil, &result, &errResult); err != nil {
+		apiInput := api.CreateGameInput{
+			Name:     name,
+			Password: password,
+		}
+		if err = web.Post(gameServer.Address+"/games/create", apiInput, &result, &errResult); err != nil {
 			fmt.Println("Error in http request ", err)
 		} else {
-			return storage.Game{GameId: result.GameId}, nil
+			return storage.Game{GameId: result.GameId, Name: name}, nil
 		}
 	}
 
