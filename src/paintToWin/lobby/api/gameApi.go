@@ -22,7 +22,7 @@ type CreateGameInput struct {
 }
 
 func (input *CreateGameInput) Validate() []web.InputError {
-	return []web.InputError{}
+	return nil
 }
 
 func ListGamesHandler(store *storage.Storage) web.RequestHandler {
