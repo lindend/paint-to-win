@@ -2,6 +2,11 @@ package game
 
 type PlayerList []*Player
 
+func (pl PlayerList) Contains(player *Player) bool {
+	_, err := pl.FindPlayer(player)
+	return err == nil
+}
+
 func (pl PlayerList) FindPlayer(player *Player) (int, error) {
 	for i, p := range pl {
 		if p == player {

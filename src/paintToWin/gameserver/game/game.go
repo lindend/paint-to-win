@@ -16,7 +16,7 @@ type inMessage struct {
 type Game struct {
 	Id      string
 	Name    string
-	Score   map[*Player]int
+	score   map[*Player]int
 	Players PlayerList
 
 	inData      chan inMessage
@@ -38,7 +38,7 @@ type Game struct {
 func NewGame(id string, state GameState) *Game {
 	g := &Game{
 		Id:      id,
-		Score:   make(map[*Player]int),
+		score:   make(map[*Player]int),
 		Players: make([]*Player, 0),
 
 		inData:      make(chan inMessage),
@@ -122,6 +122,7 @@ func (game *Game) activateState() {
 				Id:      player.TempId,
 				Name:    player.Name,
 				IsGuest: player.IsGuest,
+				Score:   game.score[player],
 			})
 		}
 	}
@@ -158,6 +159,7 @@ func (game *Game) addPlayer(player *Player) {
 		Id:      player.TempId,
 		Name:    player.Name,
 		IsGuest: player.IsGuest,
+		Score:   game.score[player],
 	}
 
 	joinMessage := NewPlayerJoinMessage(msgPlayer)
@@ -167,6 +169,7 @@ func (game *Game) addPlayer(player *Player) {
 			Id:      p.TempId,
 			Name:    p.Name,
 			IsGuest: p.IsGuest,
+			Score:   game.score[p],
 		})
 	}
 
@@ -189,6 +192,11 @@ func (game *Game) Strokes(from *Player, strokes []Stroke) {
 			p.OutData <- strokesMessage
 		}
 	}
+}
+
+func (game *Game) AddScore(player *Player, score int) {
+	currentScore := game.score[player]
+	game.score[player] = currentScore + score
 }
 
 func (game *Game) Run() {

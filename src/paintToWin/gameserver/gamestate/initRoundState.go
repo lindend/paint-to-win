@@ -35,6 +35,7 @@ func (state *InitRoundState) Activate(g *game.Game) {
 	state.game = g
 
 	state.context.word = ""
+	state.context.correctGuessers = nil
 
 	if len(g.Players) < 3 {
 		g.PushState(newWaitForPlayersState(MinNumPlayers, 100*time.Minute, state.context))

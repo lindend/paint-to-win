@@ -1,8 +1,10 @@
 package gamestate
 
 import (
-	"paintToWin/gameserver/game"
+	"strings"
 	"time"
+
+	"paintToWin/gameserver/game"
 )
 
 const MinNumPlayers = 3
@@ -13,8 +15,6 @@ type PlayGameState struct {
 
 	game    *game.Game
 	context stateContext
-
-	correctGuessers []*game.Player
 
 	messageHandler *game.MessageHandler
 
@@ -69,15 +69,22 @@ func (p *PlayGameState) strokesMessage(player *game.Player, strokes *game.Stroke
 }
 
 func (p *PlayGameState) guessMessage(player *game.Player, guess *game.GuessMessage) {
-	if player != p.context.drawingPlayer && player != p.context.choosingPlayer {
-		if guess.Guess == p.context.word {
-			p.game.Broadcast(game.NewCorrectGuessMessage(player.TempId))
-			if len(p.correctGuessers) == 0 {
-				p.game.SetTimeout(10 * time.Second)
-			}
-			p.correctGuessers = append(p.correctGuessers, player)
-		} else {
-			p.game.Broadcast(game.NewWrongGuessMessage(player.TempId, guess.Guess))
-		}
+	if player == p.context.drawingPlayer || player == p.context.choosingPlayer {
+		return
 	}
+
+	if p.context.correctGuessers.Contains(player) {
+		return
+	}
+
+	if strings.ToLower(guess.Guess) == strings.ToLower(p.context.word) {
+		p.game.Broadcast(game.NewCorrectGuessMessage(player.TempId))
+		if len(p.context.correctGuessers) == 0 {
+			p.game.SetTimeout(10 * time.Second)
+		}
+		p.context.correctGuessers = append(p.context.correctGuessers, player)
+	} else {
+		p.game.Broadcast(game.NewWrongGuessMessage(player.TempId, guess.Guess))
+	}
+
 }
