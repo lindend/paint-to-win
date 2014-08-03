@@ -11,7 +11,6 @@ const MinNumPlayers = 3
 
 type PlayGameState struct {
 	DefaultDeactivate
-	DefaultPlayerJoin
 
 	game    *game.Game
 	context stateContext
@@ -20,6 +19,8 @@ type PlayGameState struct {
 
 	DrawingPlayerId  string
 	ChoosingPlayerId string
+
+	roundStrokes []game.Stroke
 }
 
 func newPlayGameState(context stateContext) *PlayGameState {
@@ -54,6 +55,11 @@ func (p PlayGameState) Message(source *game.Player, message game.Message) {
 	p.messageHandler.Handle(source, message)
 }
 
+func (p PlayGameState) PlayerJoin(player *game.Player) {
+	allStrokesMessage := game.NewStrokesMessage(p.roundStrokes)
+	player.OutData <- allStrokesMessage
+}
+
 func (p PlayGameState) PlayerLeave(player *game.Player) {
 	if player == p.context.drawingPlayer {
 		p.game.SwapState(newEndRoundState(p.context))
@@ -64,6 +70,9 @@ func (p PlayGameState) PlayerLeave(player *game.Player) {
 
 func (p *PlayGameState) strokesMessage(player *game.Player, strokes *game.StrokesMessage) {
 	if player == p.context.drawingPlayer {
+		for _, stroke := range strokes.Strokes {
+			p.roundStrokes = append(p.roundStrokes, stroke)
+		}
 		p.game.Strokes(player, strokes.Strokes)
 	}
 }

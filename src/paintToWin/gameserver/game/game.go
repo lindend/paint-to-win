@@ -214,6 +214,9 @@ func (game *Game) Run() {
 			player.HasLeft = true
 			game.ActiveState().PlayerLeave(player)
 			game.RemovePlayer(player)
+			if len(game.Players) == 0 {
+				game.Stop()
+			}
 		case message, ok := <-game.inData:
 			if !ok {
 				break
