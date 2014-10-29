@@ -2,8 +2,11 @@ package settings
 
 import (
 	"errors"
+	"fmt"
+	"os"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/jinzhu/gorm"
 
@@ -43,6 +46,8 @@ func Load(serverName string, db gorm.DB, settings interface{}) error {
 				}
 			case reflect.String:
 				field.SetString(settingValue)
+			default:
+				errs = append(errs, "No converter available for kind "+field.Kind().String())
 			}
 
 		} else {
@@ -57,6 +62,7 @@ func Load(serverName string, db gorm.DB, settings interface{}) error {
 		}
 		return errors.New(errString)
 	} else {
+		fmt.Printf("Using settings %+v \n", settings)
 		return nil
 	}
 }
@@ -69,15 +75,43 @@ func loadSettings(serverName string, db gorm.DB) map[string]string {
 
 	settings := make(map[string]string)
 
+	argSettings := argumentSettings()
+	envSettings := environmentSettings()
+
+	for _, setting := range globalSettings {
+		settings[setting.Key] = setting.Value
+	}
+
 	for _, setting := range serverSettings {
 		settings[setting.Key] = setting.Value
 	}
 
-	for _, setting := range globalSettings {
-		if _, ok := settings[setting.Key]; !ok {
-			settings[setting.Key] = setting.Value
-		}
+	for settingKey, settingValue := range envSettings {
+		settings[settingKey] = settingValue
+	}
+
+	for settingKey, settingValue := range argSettings {
+		settings[settingKey] = settingValue
 	}
 
 	return settings
+}
+
+func environmentSettings() map[string]string {
+	return parseKeyValueSettings(os.Environ())
+}
+
+func argumentSettings() map[string]string {
+	return parseKeyValueSettings(os.Args[1:])
+}
+
+func parseKeyValueSettings(settings []string) map[string]string {
+	result := make(map[string]string)
+	for _, settingValue := range settings {
+		keyValue := strings.SplitN(settingValue, "=", 2)
+		if len(keyValue) == 2 && len(keyValue[0]) > 0 {
+			result[keyValue[0]] = keyValue[1]
+		}
+	}
+	return result
 }

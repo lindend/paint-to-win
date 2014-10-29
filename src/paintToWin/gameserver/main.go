@@ -20,11 +20,9 @@ import (
 
 func main() {
 	var dbConnectionString string
-	var address string
 	var cpuprofile string
 
 	flag.StringVar(&dbConnectionString, "db", "", "connection string for the database")
-	flag.StringVar(&address, "address", "", "remotely accessible address of the server")
 	flag.StringVar(&cpuprofile, "cpuprofile", "", "path to cpu profile output")
 	flag.Parse()
 
@@ -77,7 +75,7 @@ func main() {
 		return
 	}
 	endpoints = append(endpoints, network.EndpointInfo{
-		Address:  address,
+		Address:  config.Address,
 		Port:     config.GameServerGamePort,
 		Protocol: "ws",
 	})
