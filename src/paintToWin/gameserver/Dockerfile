@@ -5,4 +5,4 @@ ADD gameserver gameserver
 ENV GameServerGamePort 80
 ENV GameServerApiPort 8080
 
-CMD ["./gameserver"]
+CMD ["./gameserver", "-db", "$DbConnectionString"]
