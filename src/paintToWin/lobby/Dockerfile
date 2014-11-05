@@ -4,4 +4,4 @@ ADD lobby lobby
 
 ENV LobbyApiPort 80
 
-CMD ["./lobby", "-db", "$DbConnectionString"]
+CMD ["sh", "-c", "./lobby", "-db", "$DbConnectionString"]
