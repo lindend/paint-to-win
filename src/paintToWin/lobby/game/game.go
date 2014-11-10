@@ -21,7 +21,7 @@ func removeGameServer(server *storage.Server) {
 
 }
 
-func CreateGame(store *storage.Storage, name string, password string) (storage.Game, error) {
+func CreateGame(store *storage.Storage, name string, password string, wordlistId int64) (storage.Game, error) {
 	var gameServers []storage.Server
 	if err := store.Where(&storage.Server{Type: "gameserver"}, &gameServers); err != nil {
 		return storage.Game{}, err
@@ -42,6 +42,7 @@ func CreateGame(store *storage.Storage, name string, password string) (storage.G
 		apiInput := api.CreateGameInput{
 			Name:     name,
 			Password: password,
+			Wordlist: wordlistId,
 		}
 		if err = web.Post(gameServer.Address+"/games/create", apiInput, &result, &errResult); err != nil {
 			fmt.Println("Error in http request ", err)
@@ -67,4 +68,10 @@ func JoinGame(gameId string, store *storage.Storage, session *storage.Session) (
 	}
 
 	return result, nil
+}
+
+func GetWordLists(store *storage.Storage) ([]storage.WordList, error) {
+	var wordLists []storage.WordList
+	err := store.Db.Find(&wordLists).Error
+	return wordLists, err
 }

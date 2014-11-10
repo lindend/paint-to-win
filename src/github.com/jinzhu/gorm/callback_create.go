@@ -3,7 +3,6 @@ package gorm
 import (
 	"fmt"
 	"strings"
-	"time"
 )
 
 func BeforeCreate(scope *Scope) {
@@ -13,45 +12,59 @@ func BeforeCreate(scope *Scope) {
 
 func UpdateTimeStampWhenCreate(scope *Scope) {
 	if !scope.HasError() {
-		scope.SetColumn("CreatedAt", time.Now())
-		scope.SetColumn("UpdatedAt", time.Now())
+		now := NowFunc()
+		scope.SetColumn("CreatedAt", now)
+		scope.SetColumn("UpdatedAt", now)
 	}
 }
 
 func Create(scope *Scope) {
-	defer scope.Trace(time.Now())
+	defer scope.Trace(NowFunc())
 
 	if !scope.HasError() {
 		// set create sql
 		var sqls, columns []string
 
 		for _, field := range scope.Fields() {
-			if field.DBName != scope.PrimaryKey() && len(field.SqlTag) > 0 && !field.IsIgnored {
+			if field.IsNormal && (!field.IsPrimaryKey || !scope.PrimaryKeyZero()) {
 				columns = append(columns, scope.Quote(field.DBName))
-				sqls = append(sqls, scope.AddToVars(field.Value))
+				sqls = append(sqls, scope.AddToVars(field.Field.Interface()))
 			}
 		}
 
-		scope.Raw(fmt.Sprintf(
-			"INSERT INTO %v (%v) VALUES (%v) %v",
-			scope.TableName(),
-			strings.Join(columns, ","),
-			strings.Join(sqls, ","),
-			scope.Dialect().ReturningStr(scope.PrimaryKey()),
-		))
+		if len(columns) == 0 {
+			scope.Raw(fmt.Sprintf("INSERT INTO %v DEFAULT VALUES %v",
+				scope.QuotedTableName(),
+				scope.Dialect().ReturningStr(scope.PrimaryKey()),
+			))
+		} else {
+			scope.Raw(fmt.Sprintf(
+				"INSERT INTO %v (%v) VALUES (%v) %v",
+				scope.QuotedTableName(),
+				strings.Join(columns, ","),
+				strings.Join(sqls, ","),
+				scope.Dialect().ReturningStr(scope.PrimaryKey()),
+			))
+		}
 
 		// execute create sql
 		var id interface{}
 		if scope.Dialect().SupportLastInsertId() {
-			if sql_result, err := scope.DB().Exec(scope.Sql, scope.SqlVars...); scope.Err(err) == nil {
-				id, err = sql_result.LastInsertId()
-				scope.Err(err)
+			if result, err := scope.DB().Exec(scope.Sql, scope.SqlVars...); scope.Err(err) == nil {
+				id, err = result.LastInsertId()
+				if scope.Err(err) == nil {
+					if count, err := result.RowsAffected(); err == nil {
+						scope.db.RowsAffected = count
+					}
+				}
 			}
 		} else {
-			scope.Err(scope.DB().QueryRow(scope.Sql, scope.SqlVars...).Scan(&id))
+			if scope.Err(scope.DB().QueryRow(scope.Sql, scope.SqlVars...).Scan(&id)) == nil {
+				scope.db.RowsAffected = 1
+			}
 		}
 
-		if !scope.HasError() {
+		if !scope.HasError() && scope.PrimaryKeyZero() {
 			scope.SetColumn(scope.PrimaryKey(), id)
 		}
 	}

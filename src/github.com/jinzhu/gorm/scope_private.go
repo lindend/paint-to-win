@@ -5,12 +5,10 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	"go/ast"
 	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func (scope *Scope) primaryCondiation(value interface{}) string {
@@ -44,7 +42,7 @@ func (scope *Scope) buildWhereCondition(clause map[string]interface{}) (str stri
 		var sqls []string
 		for _, field := range scope.New(value).Fields() {
 			if !field.IsBlank {
-				sqls = append(sqls, fmt.Sprintf("(%v = %v)", scope.Quote(field.DBName), scope.AddToVars(field.Value)))
+				sqls = append(sqls, fmt.Sprintf("(%v = %v)", scope.Quote(field.DBName), scope.AddToVars(field.Field.Interface())))
 			}
 		}
 		return strings.Join(sqls, " AND ")
@@ -105,7 +103,7 @@ func (scope *Scope) buildNotCondition(clause map[string]interface{}) (str string
 		var sqls []string
 		for _, field := range scope.New(value).Fields() {
 			if !field.IsBlank {
-				sqls = append(sqls, fmt.Sprintf("(%v <> %v)", scope.Quote(field.DBName), scope.AddToVars(field.Value)))
+				sqls = append(sqls, fmt.Sprintf("(%v <> %v)", scope.Quote(field.DBName), scope.AddToVars(field.Field.Interface())))
 			}
 		}
 		return strings.Join(sqls, " AND ")
@@ -198,10 +196,26 @@ func (s *Scope) orderSql() string {
 }
 
 func (s *Scope) limitSql() string {
-	if len(s.Search.Limit) == 0 {
-		return ""
+	if !s.Dialect().HasTop() {
+		if len(s.Search.Limit) == 0 {
+			return ""
+		} else {
+			return " LIMIT " + s.Search.Limit
+		}
 	} else {
-		return " LIMIT " + s.Search.Limit
+		return ""
+	}
+}
+
+func (s *Scope) topSql() string {
+	if s.Dialect().HasTop() && len(s.Search.Offset) == 0 {
+		if len(s.Search.Limit) == 0 {
+			return ""
+		} else {
+			return " TOP(" + s.Search.Limit + ")"
+		}
+	} else {
+		return ""
 	}
 }
 
@@ -209,7 +223,15 @@ func (s *Scope) offsetSql() string {
 	if len(s.Search.Offset) == 0 {
 		return ""
 	} else {
-		return " OFFSET " + s.Search.Offset
+		if s.Dialect().HasTop() {
+			sql := " OFFSET " + s.Search.Offset + " ROW "
+			if len(s.Search.Limit) > 0 {
+				sql += "FETCH NEXT " + s.Search.Limit + " ROWS ONLY"
+			}
+			return sql
+		} else {
+			return " OFFSET " + s.Search.Offset
+		}
 	}
 }
 
@@ -237,7 +259,7 @@ func (scope *Scope) prepareQuerySql() {
 	if scope.Search.Raw {
 		scope.Raw(strings.TrimLeft(scope.CombinedConditionSql(), "WHERE "))
 	} else {
-		scope.Raw(fmt.Sprintf("SELECT %v FROM %v %v", scope.selectSql(), scope.TableName(), scope.CombinedConditionSql()))
+		scope.Raw(fmt.Sprintf("SELECT %v %v FROM %v %v", scope.topSql(), scope.selectSql(), scope.QuotedTableName(), scope.CombinedConditionSql()))
 	}
 	return
 }
@@ -260,23 +282,23 @@ func (scope *Scope) callCallbacks(funcs []*func(s *Scope)) *Scope {
 }
 
 func (scope *Scope) updatedAttrsWithValues(values map[string]interface{}, ignoreProtectedAttrs bool) (results map[string]interface{}, hasUpdate bool) {
-	data := reflect.Indirect(reflect.ValueOf(scope.Value))
+	data := scope.IndirectValue()
 	if !data.CanAddr() {
 		return values, true
 	}
 
 	for key, value := range values {
-		if field := data.FieldByName(snakeToUpperCamel(key)); field.IsValid() {
+		if field, ok := scope.FieldByName(SnakeToUpperCamel(key)); ok && field.Field.IsValid() {
 			func() {
 				defer func() {
 					if err := recover(); err != nil {
 						hasUpdate = true
-						setFieldValue(field, value)
+						field.Set(value)
 					}
 				}()
 
-				if field.Interface() != value {
-					switch field.Kind() {
+				if field.Field.Interface() != value {
+					switch field.Field.Kind() {
 					case reflect.Int, reflect.Int32, reflect.Int64:
 						if s, ok := value.(string); ok {
 							i, err := strconv.Atoi(s)
@@ -285,13 +307,13 @@ func (scope *Scope) updatedAttrsWithValues(values map[string]interface{}, ignore
 							}
 						}
 
-						if field.Int() != reflect.ValueOf(value).Int() {
+						if field.Field.Int() != reflect.ValueOf(value).Int() {
 							hasUpdate = true
-							setFieldValue(field, value)
+							field.Set(value)
 						}
 					default:
 						hasUpdate = true
-						setFieldValue(field, value)
+						field.Set(value)
 					}
 				}
 			}()
@@ -300,15 +322,34 @@ func (scope *Scope) updatedAttrsWithValues(values map[string]interface{}, ignore
 	return
 }
 
-func (scope *Scope) sqlTagForField(field *Field) (tag string) {
-	tag, addationalTag, size := parseSqlTag(field.Tag.Get(scope.db.parent.tagIdentifier))
+func (scope *Scope) sqlTagForField(field *Field) (typ string) {
+	if scope.db == nil {
+		return ""
+	}
+	var size = 255
 
-	if tag == "-" {
-		field.IsIgnored = true
+	fieldTag := field.Tag.Get(scope.db.parent.tagIdentifier)
+	var setting = parseTagSetting(fieldTag)
+
+	if value, ok := setting["SIZE"]; ok {
+		if i, err := strconv.Atoi(value); err == nil {
+			size = i
+		} else {
+			size = 0
+		}
 	}
 
-	value := field.Value
-	reflectValue := reflect.ValueOf(value)
+	if value, ok := setting["TYPE"]; ok {
+		typ = value
+	}
+
+	additionalType := setting["NOT NULL"] + " " + setting["UNIQUE"]
+	if value, ok := setting["DEFAULT"]; ok {
+		additionalType = additionalType + "DEFAULT " + value
+	}
+
+	value := field.Field.Interface()
+	reflectValue := field.Field
 
 	switch reflectValue.Kind() {
 	case reflect.Slice:
@@ -317,34 +358,41 @@ func (scope *Scope) sqlTagForField(field *Field) (tag string) {
 		}
 	case reflect.Struct:
 		if field.IsScanner() {
-			reflectValue = reflectValue.Field(0)
+			var getScannerValue func(reflect.Value)
+			getScannerValue = func(value reflect.Value) {
+				reflectValue = value
+				if _, isScanner := reflect.New(reflectValue.Type()).Interface().(sql.Scanner); isScanner {
+					getScannerValue(reflectValue.Field(0))
+				}
+			}
+			getScannerValue(reflectValue.Field(0))
 		} else if !field.IsTime() {
 			return
 		}
 	}
 
-	if len(tag) == 0 {
-		if field.isPrimaryKey {
-			tag = scope.Dialect().PrimaryKeyTag(reflectValue, size)
+	if len(typ) == 0 {
+		if field.IsPrimaryKey {
+			typ = scope.Dialect().PrimaryKeyTag(reflectValue, size)
 		} else {
-			tag = scope.Dialect().SqlTag(reflectValue, size)
+			typ = scope.Dialect().SqlTag(reflectValue, size)
 		}
 	}
 
-	if len(addationalTag) > 0 {
-		tag = tag + " " + addationalTag
+	if len(additionalType) > 0 {
+		typ = typ + " " + additionalType
 	}
 	return
 }
 
 func (scope *Scope) row() *sql.Row {
-	defer scope.Trace(time.Now())
+	defer scope.Trace(NowFunc())
 	scope.prepareQuerySql()
 	return scope.DB().QueryRow(scope.Sql, scope.SqlVars...)
 }
 
 func (scope *Scope) rows() (*sql.Rows, error) {
-	defer scope.Trace(time.Now())
+	defer scope.Trace(NowFunc())
 	scope.prepareQuerySql()
 	return scope.DB().Query(scope.Sql, scope.SqlVars...)
 }
@@ -362,7 +410,7 @@ func (scope *Scope) pluck(column string, value interface{}) *Scope {
 	dest := reflect.Indirect(reflect.ValueOf(value))
 	scope.Search = scope.Search.clone().selects(column)
 	if dest.Kind() != reflect.Slice {
-		scope.Err(errors.New("Results should be a slice"))
+		scope.Err(errors.New("results should be a slice"))
 		return scope
 	}
 
@@ -385,7 +433,7 @@ func (scope *Scope) count(value interface{}) *Scope {
 }
 
 func (scope *Scope) typeName() string {
-	value := reflect.Indirect(reflect.ValueOf(scope.Value))
+	value := scope.IndirectValue()
 	if value.Kind() == reflect.Slice {
 		return value.Type().Elem().Name()
 	} else {
@@ -395,98 +443,137 @@ func (scope *Scope) typeName() string {
 
 func (scope *Scope) related(value interface{}, foreignKeys ...string) *Scope {
 	toScope := scope.db.NewScope(value)
+	fromScopeType := scope.typeName()
+	toScopeType := toScope.typeName()
+	scopeType := ""
 
 	for _, foreignKey := range append(foreignKeys, toScope.typeName()+"Id", scope.typeName()+"Id") {
-		if foreignValue, ok := scope.FieldByName(foreignKey); ok {
-			return toScope.inlineCondition(foreignValue).callCallbacks(scope.db.parent.callback.queries)
-		} else if toScope.HasColumn(foreignKey) {
-			sql := fmt.Sprintf("%v = ?", scope.Quote(toSnake(foreignKey)))
-			return toScope.inlineCondition(sql, scope.PrimaryKeyValue()).callCallbacks(scope.db.parent.callback.queries)
+		if keys := strings.Split(foreignKey, "."); len(keys) > 1 {
+			scopeType = keys[0]
+			foreignKey = keys[1]
+		}
+
+		if scopeType == "" || scopeType == fromScopeType {
+			if field, ok := scope.FieldByName(foreignKey); ok {
+				relationship := field.Relationship
+				if relationship != nil && relationship.ForeignKey != "" {
+					foreignKey = relationship.ForeignKey
+
+					if relationship.Kind == "many_to_many" {
+						joinSql := fmt.Sprintf(
+							"INNER JOIN %v ON %v.%v = %v.%v",
+							scope.Quote(relationship.JoinTable),
+							scope.Quote(relationship.JoinTable),
+							scope.Quote(ToSnake(relationship.AssociationForeignKey)),
+							toScope.QuotedTableName(),
+							scope.Quote(toScope.PrimaryKey()))
+						whereSql := fmt.Sprintf("%v.%v = ?", scope.Quote(relationship.JoinTable), scope.Quote(ToSnake(relationship.ForeignKey)))
+						toScope.db.Joins(joinSql).Where(whereSql, scope.PrimaryKeyValue()).Find(value)
+						return scope
+					}
+				}
+
+				// has one
+				if foreignValue, err := scope.FieldValueByName(foreignKey); err == nil {
+					toScope.inlineCondition(foreignValue).callCallbacks(scope.db.parent.callback.queries)
+					return scope
+				}
+			}
+		}
+
+		if scopeType == "" || scopeType == toScopeType {
+			// has many
+			if toScope.HasColumn(foreignKey) {
+				sql := fmt.Sprintf("%v = ?", scope.Quote(ToSnake(foreignKey)))
+				return toScope.inlineCondition(sql, scope.PrimaryKeyValue()).callCallbacks(scope.db.parent.callback.queries)
+			}
 		}
 	}
+	scope.Err(fmt.Errorf("invalid association %v", foreignKeys))
 	return scope
+}
+
+func (scope *Scope) createJoinTable(field *Field) {
+	if field.Relationship != nil && field.Relationship.JoinTable != "" {
+		if !scope.Dialect().HasTable(scope, field.Relationship.JoinTable) {
+			newScope := scope.db.NewScope("")
+			primaryKeySqlType := scope.Dialect().SqlTag(reflect.ValueOf(scope.PrimaryKeyValue()), 255)
+			newScope.Raw(fmt.Sprintf("CREATE TABLE %v (%v)",
+				field.Relationship.JoinTable,
+				strings.Join([]string{
+					scope.Quote(ToSnake(field.Relationship.ForeignKey)) + " " + primaryKeySqlType,
+					scope.Quote(ToSnake(field.Relationship.AssociationForeignKey)) + " " + primaryKeySqlType}, ",")),
+			).Exec()
+			scope.Err(newScope.db.Error)
+		}
+	}
 }
 
 func (scope *Scope) createTable() *Scope {
 	var sqls []string
 	for _, field := range scope.Fields() {
-		if !field.IsIgnored && len(field.SqlTag) > 0 {
-			sqls = append(sqls, scope.Quote(field.DBName)+" "+field.SqlTag)
+		if field.IsNormal {
+			sqlTag := scope.sqlTagForField(field)
+			sqls = append(sqls, scope.Quote(field.DBName)+" "+sqlTag)
 		}
+		scope.createJoinTable(field)
 	}
-	scope.Raw(fmt.Sprintf("CREATE TABLE %v (%v)", scope.TableName(), strings.Join(sqls, ","))).Exec()
+	scope.Raw(fmt.Sprintf("CREATE TABLE %v (%v)", scope.QuotedTableName(), strings.Join(sqls, ","))).Exec()
 	return scope
 }
 
 func (scope *Scope) dropTable() *Scope {
-	scope.Raw(fmt.Sprintf("DROP TABLE %v", scope.TableName())).Exec()
+	scope.Raw(fmt.Sprintf("DROP TABLE %v", scope.QuotedTableName())).Exec()
+	return scope
+}
+
+func (scope *Scope) dropTableIfExists() *Scope {
+	scope.Raw(fmt.Sprintf("DROP TABLE IF EXISTS %v", scope.QuotedTableName())).Exec()
 	return scope
 }
 
 func (scope *Scope) modifyColumn(column string, typ string) {
-	scope.Raw(fmt.Sprintf("ALTER TABLE %v MODIFY %v %v", scope.TableName(), scope.Quote(column), typ)).Exec()
+	scope.Raw(fmt.Sprintf("ALTER TABLE %v MODIFY %v %v", scope.QuotedTableName(), scope.Quote(column), typ)).Exec()
 }
 
 func (scope *Scope) dropColumn(column string) {
-	scope.Raw(fmt.Sprintf("ALTER TABLE %v DROP COLUMN %v", scope.TableName(), scope.Quote(column))).Exec()
+	scope.Raw(fmt.Sprintf("ALTER TABLE %v DROP COLUMN %v", scope.QuotedTableName(), scope.Quote(column))).Exec()
 }
 
-func (scope *Scope) addIndex(column string, names ...string) {
-	var indexName string
-	if len(names) > 0 {
-		indexName = names[0]
-	} else {
-		indexName = fmt.Sprintf("index_%v_on_%v", scope.TableName(), column)
+func (scope *Scope) addIndex(unique bool, indexName string, column ...string) {
+	var columns []string
+	for _, name := range column {
+		columns = append(columns, scope.Quote(name))
 	}
 
-	scope.Raw(fmt.Sprintf("CREATE INDEX %v ON %v(%v);", indexName, scope.TableName(), scope.Quote(column))).Exec()
+	sqlCreate := "CREATE INDEX"
+	if unique {
+		sqlCreate = "CREATE UNIQUE INDEX"
+	}
+
+	scope.Raw(fmt.Sprintf("%s %v ON %v(%v);", sqlCreate, indexName, scope.QuotedTableName(), strings.Join(columns, ", "))).Exec()
 }
 
 func (scope *Scope) removeIndex(indexName string) {
-	scope.Raw(fmt.Sprintf("DROP INDEX %v ON %v", indexName, scope.TableName())).Exec()
+	scope.Dialect().RemoveIndex(scope, indexName)
 }
 
 func (scope *Scope) autoMigrate() *Scope {
-	if !scope.Dialect().HasTable(scope, scope.TableName()) {
+	tableName := scope.TableName()
+	quotedTableName := scope.QuotedTableName()
+
+	if !scope.Dialect().HasTable(scope, tableName) {
 		scope.createTable()
 	} else {
 		for _, field := range scope.Fields() {
-			if !scope.Dialect().HasColumn(scope, scope.TableName(), field.DBName) {
-				if len(field.SqlTag) > 0 && !field.IsIgnored {
-					scope.Raw(fmt.Sprintf("ALTER TABLE %v ADD %v %v;", scope.TableName(), field.DBName, field.SqlTag)).Exec()
+			if !scope.Dialect().HasColumn(scope, tableName, field.DBName) {
+				if field.IsNormal {
+					sqlTag := scope.sqlTagForField(field)
+					scope.Raw(fmt.Sprintf("ALTER TABLE %v ADD %v %v;", quotedTableName, field.DBName, sqlTag)).Exec()
 				}
 			}
+			scope.createJoinTable(field)
 		}
 	}
 	return scope
-}
-
-func (scope *Scope) getPrimaryKey() string {
-	var indirectValue reflect.Value
-
-	indirectValue = reflect.Indirect(reflect.ValueOf(scope.Value))
-
-	if indirectValue.Kind() == reflect.Slice {
-		indirectValue = reflect.New(indirectValue.Type().Elem()).Elem()
-	}
-
-	if !indirectValue.IsValid() {
-		return "id"
-	}
-
-	scopeTyp := indirectValue.Type()
-	for i := 0; i < scopeTyp.NumField(); i++ {
-		fieldStruct := scopeTyp.Field(i)
-		if !ast.IsExported(fieldStruct.Name) {
-			continue
-		}
-
-		// if primaryKey tag found, return column name
-		if fieldStruct.Tag.Get("primaryKey") != "" {
-			return toSnake(fieldStruct.Name)
-		}
-	}
-
-	//If primaryKey tag not found, fallback to id
-	return "id"
 }

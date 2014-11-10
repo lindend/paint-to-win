@@ -2,11 +2,26 @@ package gorm
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
+	"reflect"
+	"time"
 )
+
+// NowFunc returns current time, this function is exported in order to be able
+// to give the flexiblity to the developer to costumize it accoring to their
+// needs
+//
+//   e.g: return time.Now().UTC()
+//
+var NowFunc = func() time.Time {
+	return time.Now()
+}
 
 type DB struct {
 	Value         interface{}
 	Error         error
+	RowsAffected  int64
 	callback      *callback
 	db            sqlCommon
 	parent        *DB
@@ -17,13 +32,31 @@ type DB struct {
 	tagIdentifier string
 	singularTable bool
 	source        string
+	values        map[string]interface{}
 }
 
-func Open(driver, source string) (DB, error) {
+func Open(dialect string, drivesources ...string) (DB, error) {
+	var db DB
 	var err error
-	db := DB{dialect: NewDialect(driver), tagIdentifier: "sql", logger: defaultLogger, callback: DefaultCallback, source: source}
-	db.db, err = sql.Open(driver, source)
-	db.parent = &db
+	var driver = dialect
+	var source string
+
+	if len(drivesources) == 0 {
+		err = errors.New("invalid database source")
+	} else {
+		if len(drivesources) == 1 {
+			source = drivesources[0]
+		} else if len(drivesources) >= 2 {
+			driver = drivesources[0]
+			source = drivesources[1]
+		}
+
+		db = DB{dialect: NewDialect(dialect), tagIdentifier: "sql",
+			logger: defaultLogger, callback: DefaultCallback, source: source,
+			values: map[string]interface{}{}}
+		db.db, err = sql.Open(driver, source)
+		db.parent = &db
+	}
 	return db, err
 }
 
@@ -133,15 +166,19 @@ func (s *DB) Assign(attrs ...interface{}) *DB {
 }
 
 func (s *DB) First(out interface{}, where ...interface{}) *DB {
-	scope := s.clone().NewScope(out)
-	scope.Search = scope.Search.clone().order(scope.TableName() + "." + scope.PrimaryKey()).limit(1)
-	return scope.inlineCondition(where...).callCallbacks(s.parent.callback.queries).db
+	newScope := s.clone().NewScope(out)
+	newScope.Search = newScope.Search.clone()
+	newScope.Search.limit(1)
+	return newScope.InstanceSet("gorm:order_by_primary_key", "ASC").
+		inlineCondition(where...).callCallbacks(s.parent.callback.queries).db
 }
 
 func (s *DB) Last(out interface{}, where ...interface{}) *DB {
-	scope := s.clone().NewScope(out)
-	scope.Search = scope.Search.clone().order(scope.TableName() + "." + scope.PrimaryKey() + " DESC").limit(1)
-	return scope.inlineCondition(where...).callCallbacks(s.parent.callback.queries).db
+	newScope := s.clone().NewScope(out)
+	newScope.Search = newScope.Search.clone()
+	newScope.Search.limit(1)
+	return newScope.InstanceSet("gorm:order_by_primary_key", "DESC").
+		inlineCondition(where...).callCallbacks(s.parent.callback.queries).db
 }
 
 func (s *DB) Find(out interface{}, where ...interface{}) *DB {
@@ -157,14 +194,18 @@ func (s *DB) Rows() (*sql.Rows, error) {
 }
 
 func (s *DB) Scan(dest interface{}) *DB {
-	scope := s.clone().NewScope(s.Value).Set("gorm:query_destination", dest)
+	scope := s.clone().NewScope(s.Value).InstanceSet("gorm:query_destination", dest)
 	Query(scope)
 	return scope.db
 }
 
 func (s *DB) FirstOrInit(out interface{}, where ...interface{}) *DB {
 	c := s.clone()
-	if c.First(out, where...).Error == RecordNotFound {
+	r := c.First(out, where...)
+	if r.Error != nil {
+		if !r.RecordNotFound() {
+			return r
+		}
 		c.NewScope(out).inlineCondition(where...).initialize()
 	} else {
 		c.NewScope(out).updatedAttrsWithValues(convertInterfaceToMap(s.search.AssignAttrs), false)
@@ -174,10 +215,14 @@ func (s *DB) FirstOrInit(out interface{}, where ...interface{}) *DB {
 
 func (s *DB) FirstOrCreate(out interface{}, where ...interface{}) *DB {
 	c := s.clone()
-	if c.First(out, where...).Error == RecordNotFound {
+	r := c.First(out, where...)
+	if r.Error != nil {
+		if !r.RecordNotFound() {
+			return r
+		}
 		c.NewScope(out).inlineCondition(where...).initialize().callCallbacks(s.parent.callback.creates)
-	} else if len(s.search.AssignAttrs) > 0 {
-		c.NewScope(out).Set("gorm:update_interface", s.search.AssignAttrs).callCallbacks(s.parent.callback.updates)
+	} else if len(c.search.AssignAttrs) > 0 {
+		c.NewScope(out).InstanceSet("gorm:update_interface", s.search.AssignAttrs).callCallbacks(s.parent.callback.updates)
 	}
 	return c
 }
@@ -188,8 +233,8 @@ func (s *DB) Update(attrs ...interface{}) *DB {
 
 func (s *DB) Updates(values interface{}, ignoreProtectedAttrs ...bool) *DB {
 	return s.clone().NewScope(s.Value).
-		Set("gorm:update_interface", values).
 		Set("gorm:ignore_protected_attrs", len(ignoreProtectedAttrs) > 0).
+		InstanceSet("gorm:update_interface", values).
 		callCallbacks(s.parent.callback.updates).db
 }
 
@@ -199,8 +244,8 @@ func (s *DB) UpdateColumn(attrs ...interface{}) *DB {
 
 func (s *DB) UpdateColumns(values interface{}) *DB {
 	return s.clone().NewScope(s.Value).
-		Set("gorm:update_interface", values).
 		Set("gorm:update_column", true).
+		InstanceSet("gorm:update_interface", values).
 		callCallbacks(s.parent.callback.updates).db
 }
 
@@ -213,8 +258,13 @@ func (s *DB) Save(value interface{}) *DB {
 	}
 }
 
-func (s *DB) Delete(value interface{}) *DB {
-	return s.clone().NewScope(value).callCallbacks(s.parent.callback.deletes).db
+func (s *DB) Create(value interface{}) *DB {
+	scope := s.clone().NewScope(value)
+	return scope.callCallbacks(s.parent.callback.creates).db
+}
+
+func (s *DB) Delete(value interface{}, where ...interface{}) *DB {
+	return s.clone().NewScope(value).inlineCondition(where...).callCallbacks(s.parent.callback.deletes).db
 }
 
 func (s *DB) Raw(sql string, values ...interface{}) *DB {
@@ -300,8 +350,22 @@ func (s *DB) DropTable(value interface{}) *DB {
 	return s.clone().NewScope(value).dropTable().db
 }
 
-func (s *DB) AutoMigrate(value interface{}) *DB {
-	return s.clone().NewScope(value).autoMigrate().db
+func (s *DB) DropTableIfExists(value interface{}) *DB {
+	return s.clone().NewScope(value).dropTableIfExists().db
+}
+
+func (s *DB) HasTable(value interface{}) bool {
+	scope := s.clone().NewScope(value)
+	tableName := scope.TableName()
+	return scope.Dialect().HasTable(scope, tableName)
+}
+
+func (s *DB) AutoMigrate(values ...interface{}) *DB {
+	db := s.clone()
+	for _, value := range values {
+		db = db.NewScope(value).autoMigrate().db
+	}
+	return db
 }
 
 func (s *DB) ModifyColumn(column string, typ string) *DB {
@@ -314,12 +378,54 @@ func (s *DB) DropColumn(column string) *DB {
 	return s
 }
 
-func (s *DB) AddIndex(column string, indexName ...string) *DB {
-	s.clone().NewScope(s.Value).addIndex(column, indexName...)
+func (s *DB) AddIndex(indexName string, column ...string) *DB {
+	s.clone().NewScope(s.Value).addIndex(false, indexName, column...)
 	return s
 }
 
-func (s *DB) RemoveIndex(column string) *DB {
-	s.clone().NewScope(s.Value).removeIndex(column)
+func (s *DB) AddUniqueIndex(indexName string, column ...string) *DB {
+	s.clone().NewScope(s.Value).addIndex(true, indexName, column...)
 	return s
+}
+
+func (s *DB) RemoveIndex(indexName string) *DB {
+	s.clone().NewScope(s.Value).removeIndex(indexName)
+	return s
+}
+
+func (s *DB) Association(column string) *Association {
+	scope := s.clone().NewScope(s.Value)
+
+	primaryKey := scope.PrimaryKeyValue()
+	if reflect.DeepEqual(reflect.ValueOf(primaryKey), reflect.Zero(reflect.ValueOf(primaryKey).Type())) {
+		scope.Err(errors.New("primary key can't be nil"))
+	}
+
+	var field *Field
+	var ok bool
+	if field, ok = scope.FieldByName(SnakeToUpperCamel(column)); ok {
+		if field.Relationship == nil || field.Relationship.ForeignKey == "" {
+			scope.Err(fmt.Errorf("invalid association %v for %v", column, scope.IndirectValue().Type()))
+		}
+	} else {
+		scope.Err(fmt.Errorf("%v doesn't have column %v", scope.IndirectValue().Type(), column))
+	}
+
+	return &Association{Scope: scope, Column: column, Error: s.Error, PrimaryKey: primaryKey, Field: field}
+}
+
+// Set set value by name
+func (s *DB) Set(name string, value interface{}) *DB {
+	return s.clone().InstantSet(name, value)
+}
+
+func (s *DB) InstantSet(name string, value interface{}) *DB {
+	s.values[name] = value
+	return s
+}
+
+// Get get value by name
+func (s *DB) Get(name string) (value interface{}, ok bool) {
+	value, ok = s.values[name]
+	return
 }

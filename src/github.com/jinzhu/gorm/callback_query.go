@@ -1,27 +1,38 @@
 package gorm
 
 import (
+	"fmt"
 	"reflect"
-	"time"
 )
 
 func Query(scope *Scope) {
-	defer scope.Trace(time.Now())
+	defer scope.Trace(NowFunc())
 
 	var (
 		isSlice        bool
+		isPtr          bool
 		anyRecordFound bool
 		destType       reflect.Type
 	)
 
-	var dest = reflect.Indirect(reflect.ValueOf(scope.Value))
-	if value, ok := scope.Get("gorm:query_destination"); ok {
+	var dest = scope.IndirectValue()
+	if value, ok := scope.InstanceGet("gorm:query_destination"); ok {
 		dest = reflect.Indirect(reflect.ValueOf(value))
+	}
+
+	if orderBy, ok := scope.InstanceGet("gorm:order_by_primary_key"); ok {
+		if primaryKey := scope.PrimaryKey(); primaryKey != "" {
+			scope.Search = scope.Search.clone().order(fmt.Sprintf("%v.%v %v", scope.QuotedTableName(), primaryKey, orderBy))
+		}
 	}
 
 	if dest.Kind() == reflect.Slice {
 		isSlice = true
 		destType = dest.Type().Elem()
+		if destType.Kind() == reflect.Ptr {
+			isPtr = true
+			destType = destType.Elem()
+		}
 	} else {
 		scope.Search = scope.Search.clone().limit(1)
 	}
@@ -45,10 +56,10 @@ func Query(scope *Scope) {
 
 			columns, _ := rows.Columns()
 			var values []interface{}
+			fields := scope.New(elem.Addr().Interface()).Fields()
 			for _, value := range columns {
-				field := elem.FieldByName(snakeToUpperCamel(value))
-				if field.IsValid() {
-					values = append(values, field.Addr().Interface())
+				if field, ok := fields[value]; ok {
+					values = append(values, field.Field.Addr().Interface())
 				} else {
 					var ignore interface{}
 					values = append(values, &ignore)
@@ -57,11 +68,15 @@ func Query(scope *Scope) {
 			scope.Err(rows.Scan(values...))
 
 			if isSlice {
-				dest.Set(reflect.Append(dest, elem))
+				if isPtr {
+					dest.Set(reflect.Append(dest, elem.Addr()))
+				} else {
+					dest.Set(reflect.Append(dest, elem))
+				}
 			}
 		}
 
-		if !anyRecordFound && !isSlice {
+		if !anyRecordFound {
 			scope.Err(RecordNotFound)
 		}
 	}

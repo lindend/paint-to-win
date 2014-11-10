@@ -6,7 +6,11 @@ import (
 )
 
 func (s *DB) clone() *DB {
-	db := DB{db: s.db, parent: s.parent, logMode: s.logMode, Value: s.Value, Error: s.Error}
+	db := DB{db: s.db, parent: s.parent, logMode: s.logMode, Value: s.Value, Error: s.Error, values: map[string]interface{}{}}
+
+	for key, value := range s.values {
+		db.values[key] = value
+	}
 
 	if s.search == nil {
 		db.search = &search{}
@@ -45,13 +49,13 @@ func (s *DB) print(v ...interface{}) {
 }
 
 func (s *DB) log(v ...interface{}) {
-	if s.logMode == 2 {
+	if s != nil && s.logMode == 2 {
 		s.print(append([]interface{}{"log", fileWithLineNum()}, v...)...)
 	}
 }
 
 func (s *DB) slog(sql string, t time.Time, vars ...interface{}) {
 	if s.logMode == 2 {
-		s.print("sql", fileWithLineNum(), time.Now().Sub(t), sql, vars)
+		s.print("sql", fileWithLineNum(), NowFunc().Sub(t), sql, vars)
 	}
 }

@@ -2,81 +2,81 @@ package gorm
 
 import (
 	"fmt"
-	"strings"
 	"reflect"
+	"strings"
 )
 
-type mysql struct{}
+type commonDialect struct{}
 
-func (s *mysql) BinVar(i int) string {
-	return "$$" // ?
+func (s *commonDialect) BinVar(i int) string {
+	return "?"
 }
 
-func (s *mysql) SupportLastInsertId() bool {
+func (s *commonDialect) SupportLastInsertId() bool {
 	return true
 }
 
-func (s *mysql) HasTop() bool {
+func (s *commonDialect) HasTop() bool {
 	return false
 }
 
-func (d *mysql) SqlTag(value reflect.Value, size int) string {
+func (d *commonDialect) SqlTag(value reflect.Value, size int) string {
 	switch value.Kind() {
 	case reflect.Bool:
-		return "boolean"
+		return "BOOLEAN"
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uintptr:
-		return "int"
+		return "INTEGER"
 	case reflect.Int64, reflect.Uint64:
-		return "bigint"
+		return "BIGINT"
 	case reflect.Float32, reflect.Float64:
-		return "double"
+		return "FLOAT"
 	case reflect.String:
 		if size > 0 && size < 65532 {
-			return fmt.Sprintf("varchar(%d)", size)
+			return fmt.Sprintf("VARCHAR(%d)", size)
 		} else {
-			return "longtext"
+			return "VARCHAR(65532)"
 		}
 	case reflect.Struct:
 		if value.Type() == timeType {
-			return "datetime"
+			return "TIMESTAMP"
 		}
 	default:
 		if _, ok := value.Interface().([]byte); ok {
 			if size > 0 && size < 65532 {
-				return fmt.Sprintf("varbinary(%d)", size)
+				return fmt.Sprintf("BINARY(%d)", size)
 			} else {
-				return "longblob"
+				return "BINARY(65532)"
 			}
 		}
 	}
-	panic(fmt.Sprintf("invalid sql type %s (%s) for mysql", value.Type().Name(), value.Kind().String()))
+	panic(fmt.Sprintf("invalid sql type %s (%s) for commonDialect", value.Type().Name(), value.Kind().String()))
 }
 
-func (s *mysql) PrimaryKeyTag(value reflect.Value, size int) string {
-	suffix_str := " NOT NULL AUTO_INCREMENT PRIMARY KEY"
+func (s *commonDialect) PrimaryKeyTag(value reflect.Value, size int) string {
+	suffix_str := " NOT NULL PRIMARY KEY"
 	switch value.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uintptr:
-		return "int" + suffix_str
+		return "INTEGER" + suffix_str
 	case reflect.Int64, reflect.Uint64:
-		return "bigint" + suffix_str
+		return "BIGINT" + suffix_str
 	default:
 		panic("Invalid primary key type")
 	}
 }
 
-func (s *mysql) ReturningStr(key string) string {
+func (s *commonDialect) ReturningStr(key string) string {
 	return ""
 }
 
-func (s *mysql) SelectFromDummyTable() string {
-	return "FROM DUAL"
+func (s *commonDialect) SelectFromDummyTable() string {
+	return ""
 }
 
-func (s *mysql) Quote(key string) string {
+func (s *commonDialect) Quote(key string) string {
 	return fmt.Sprintf("`%s`", key)
 }
 
-func (s *mysql) databaseName(scope *Scope) string {
+func (s *commonDialect) databaseName(scope *Scope) string {
 	from := strings.Index(scope.db.parent.source, "/") + 1
 	to := strings.Index(scope.db.parent.source, "?")
 	if to == -1 {
@@ -85,7 +85,7 @@ func (s *mysql) databaseName(scope *Scope) string {
 	return scope.db.parent.source[from:to]
 }
 
-func (s *mysql) HasTable(scope *Scope, tableName string) bool {
+func (s *commonDialect) HasTable(scope *Scope, tableName string) bool {
 	var count int
 	newScope := scope.New(nil)
 	newScope.Raw(fmt.Sprintf("SELECT count(*) FROM INFORMATION_SCHEMA.tables where table_name = %v AND table_schema = %v",
@@ -95,7 +95,7 @@ func (s *mysql) HasTable(scope *Scope, tableName string) bool {
 	return count > 0
 }
 
-func (s *mysql) HasColumn(scope *Scope, tableName string, columnName string) bool {
+func (s *commonDialect) HasColumn(scope *Scope, tableName string, columnName string) bool {
 	var count int
 	newScope := scope.New(nil)
 	newScope.Raw(fmt.Sprintf("SELECT count(*) FROM information_schema.columns WHERE table_schema = %v AND table_name = %v AND column_name = %v",
@@ -107,6 +107,6 @@ func (s *mysql) HasColumn(scope *Scope, tableName string, columnName string) boo
 	return count > 0
 }
 
-func (s *mysql) RemoveIndex(scope *Scope, indexName string) {
+func (s *commonDialect) RemoveIndex(scope *Scope, indexName string) {
 	scope.Raw(fmt.Sprintf("DROP INDEX %v ON %v", indexName, scope.QuotedTableName())).Exec()
 }

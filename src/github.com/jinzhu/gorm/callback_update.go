@@ -3,20 +3,19 @@ package gorm
 import (
 	"fmt"
 	"strings"
-	"time"
 )
 
 func AssignUpdateAttributes(scope *Scope) {
-	if attrs, ok := scope.Get("gorm:update_interface"); ok {
+	if attrs, ok := scope.InstanceGet("gorm:update_interface"); ok {
 		if maps := convertInterfaceToMap(attrs); len(maps) > 0 {
 			protected, ok := scope.Get("gorm:ignore_protected_attrs")
 			_, updateColumn := scope.Get("gorm:update_column")
 			updateAttrs, hasUpdate := scope.updatedAttrsWithValues(maps, ok && protected.(bool))
 
 			if updateColumn {
-				scope.Set("gorm:update_attrs", maps)
+				scope.InstanceSet("gorm:update_attrs", maps)
 			} else if len(updateAttrs) > 0 {
-				scope.Set("gorm:update_attrs", updateAttrs)
+				scope.InstanceSet("gorm:update_attrs", updateAttrs)
 			} else if !hasUpdate {
 				scope.SkipLeft()
 				return
@@ -26,17 +25,15 @@ func AssignUpdateAttributes(scope *Scope) {
 }
 
 func BeforeUpdate(scope *Scope) {
-	_, ok := scope.Get("gorm:update_column")
-	if !ok {
+	if _, ok := scope.Get("gorm:update_column"); !ok {
 		scope.CallMethod("BeforeSave")
 		scope.CallMethod("BeforeUpdate")
 	}
 }
 
 func UpdateTimeStampWhenUpdate(scope *Scope) {
-	_, ok := scope.Get("gorm:update_column")
-	if !ok {
-		scope.SetColumn("UpdatedAt", time.Now())
+	if _, ok := scope.Get("gorm:update_column"); !ok {
+		scope.SetColumn("UpdatedAt", NowFunc())
 	}
 }
 
@@ -44,22 +41,22 @@ func Update(scope *Scope) {
 	if !scope.HasError() {
 		var sqls []string
 
-		updateAttrs, ok := scope.Get("gorm:update_attrs")
+		updateAttrs, ok := scope.InstanceGet("gorm:update_attrs")
 		if ok {
 			for key, value := range updateAttrs.(map[string]interface{}) {
 				sqls = append(sqls, fmt.Sprintf("%v = %v", scope.Quote(key), scope.AddToVars(value)))
 			}
 		} else {
 			for _, field := range scope.Fields() {
-				if field.DBName != scope.PrimaryKey() && len(field.SqlTag) > 0 && !field.IsIgnored {
-					sqls = append(sqls, fmt.Sprintf("%v = %v", scope.Quote(field.DBName), scope.AddToVars(field.Value)))
+				if !field.IsPrimaryKey && field.IsNormal && !field.IsIgnored {
+					sqls = append(sqls, fmt.Sprintf("%v = %v", scope.Quote(field.DBName), scope.AddToVars(field.Field.Interface())))
 				}
 			}
 		}
 
 		scope.Raw(fmt.Sprintf(
 			"UPDATE %v SET %v %v",
-			scope.TableName(),
+			scope.QuotedTableName(),
 			strings.Join(sqls, ", "),
 			scope.CombinedConditionSql(),
 		))

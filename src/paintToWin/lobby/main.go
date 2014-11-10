@@ -58,6 +58,7 @@ func main() {
 
 	api.RegisterUserApi(router, store)
 	api.RegisterGameApi(router, store)
+	api.RegisterMetadataApi(router, store)
 
 	fmt.Println("Listening on port ")
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", config.LobbyApiPort), router))

@@ -2,61 +2,62 @@ package gorm
 
 import (
 	"database/sql"
+	"errors"
 	"reflect"
-	"strconv"
-	"strings"
 	"time"
 )
 
+type relationship struct {
+	JoinTable             string
+	ForeignKey            string
+	AssociationForeignKey string
+	Kind                  string
+}
+
 type Field struct {
-	Name              string
-	DBName            string
-	Value             interface{}
-	IsBlank           bool
-	IsIgnored         bool
-	Tag               reflect.StructTag
-	SqlTag            string
-	ForeignKey        string
-	BeforeAssociation bool
-	AfterAssociation  bool
-	isPrimaryKey      bool
+	Name         string
+	DBName       string
+	Field        reflect.Value
+	Tag          reflect.StructTag
+	Relationship *relationship
+	IsNormal     bool
+	IsBlank      bool
+	IsIgnored    bool
+	IsPrimaryKey bool
 }
 
-func (f *Field) IsScanner() bool {
-	_, is_scanner := reflect.New(reflect.ValueOf(f.Value).Type()).Interface().(sql.Scanner)
-	return is_scanner
+func (field *Field) IsScanner() bool {
+	_, isScanner := reflect.New(field.Field.Type()).Interface().(sql.Scanner)
+	return isScanner
 }
 
-func (f *Field) IsTime() bool {
-	_, is_time := f.Value.(time.Time)
-	return is_time
+func (field *Field) IsTime() bool {
+	_, isTime := field.Field.Interface().(time.Time)
+	return isTime
 }
 
-func parseSqlTag(str string) (typ string, addational_typ string, size int) {
-	if str == "-" {
-		typ = str
-	} else if str != "" {
-		tags := strings.Split(str, ";")
-		m := make(map[string]string)
-		for _, value := range tags {
-			v := strings.Split(value, ":")
-			k := strings.TrimSpace(strings.ToUpper(v[0]))
-			if len(v) == 2 {
-				m[k] = v[1]
-			} else {
-				m[k] = k
-			}
-		}
-
-		if len(m["SIZE"]) > 0 {
-			size, _ = strconv.Atoi(m["SIZE"])
-		}
-
-		if len(m["TYPE"]) > 0 {
-			typ = m["TYPE"]
-		}
-
-		addational_typ = m["NOT NULL"] + " " + m["UNIQUE"]
+func (field *Field) Set(value interface{}) (err error) {
+	if !field.Field.IsValid() {
+		return errors.New("field value not valid")
 	}
+
+	if !field.Field.CanAddr() {
+		return errors.New("field value not addressable")
+	}
+
+	if rvalue, ok := value.(reflect.Value); ok {
+		value = rvalue.Interface()
+	}
+
+	if scanner, ok := field.Field.Addr().Interface().(sql.Scanner); ok {
+		scanner.Scan(value)
+	} else if reflect.TypeOf(value).ConvertibleTo(field.Field.Type()) {
+		field.Field.Set(reflect.ValueOf(value).Convert(field.Field.Type()))
+	} else {
+		return errors.New("could not convert argument")
+	}
+
+	field.IsBlank = isBlank(field.Field)
+
 	return
 }

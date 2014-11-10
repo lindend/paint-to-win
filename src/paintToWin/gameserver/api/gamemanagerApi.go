@@ -14,6 +14,7 @@ import (
 type CreateGameInput struct {
 	Name     string
 	Password string
+	Wordlist int64
 }
 
 type CreateGameOutput struct {

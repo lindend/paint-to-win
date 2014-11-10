@@ -15,6 +15,10 @@ func (s *sqlite3) SupportLastInsertId() bool {
 	return true
 }
 
+func (s *sqlite3) HasTop() bool {
+	return false
+}
+
 func (s *sqlite3) SqlTag(value reflect.Value, size int) string {
 	switch value.Kind() {
 	case reflect.Bool:
@@ -56,25 +60,26 @@ func (s *sqlite3) ReturningStr(key string) string {
 	return ""
 }
 
+func (s *sqlite3) SelectFromDummyTable() string {
+	return ""
+}
+
 func (s *sqlite3) Quote(key string) string {
 	return fmt.Sprintf("\"%s\"", key)
 }
 
 func (s *sqlite3) HasTable(scope *Scope, tableName string) bool {
 	var count int
-	newScope := scope.New(nil)
-	newScope.Raw(fmt.Sprintf("SELECT count(*) FROM INFORMATION_SCHEMA.tables where table_name = %v", newScope.AddToVars(tableName)))
-	newScope.DB().QueryRow(newScope.Sql, newScope.SqlVars...).Scan(&count)
+	scope.DB().QueryRow(fmt.Sprintf("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='%v';", tableName)).Scan(&count)
 	return count > 0
 }
 
 func (s *sqlite3) HasColumn(scope *Scope, tableName string, columnName string) bool {
 	var count int
-	newScope := scope.New(nil)
-	newScope.Raw(fmt.Sprintf("SELECT count(*) FROM information_schema.columns WHERE table_name = %v AND column_name = %v",
-		newScope.AddToVars(tableName),
-		newScope.AddToVars(columnName),
-	))
-	newScope.DB().QueryRow(newScope.Sql, newScope.SqlVars...).Scan(&count)
+	scope.DB().QueryRow(fmt.Sprintf("SELECT count(*) FROM sqlite_master WHERE tbl_name = '%v' AND (sql LIKE '%%(\"%v\" %%' OR sql LIKE '%%,\"%v\" %%' OR sql LIKE '%%( %v %%' OR sql LIKE '%%, %v %%');\n", tableName, columnName, columnName, columnName, columnName)).Scan(&count)
 	return count > 0
+}
+
+func (s *sqlite3) RemoveIndex(scope *Scope, indexName string) {
+	scope.Raw(fmt.Sprintf("DROP INDEX %v", indexName)).Exec()
 }
