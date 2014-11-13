@@ -13,7 +13,7 @@ import (
 	"paintToWin/storage"
 )
 
-func Load(serverName string, db gorm.DB, settings interface{}) error {
+func Load(serverName string, db *gorm.DB, settings interface{}) error {
 	settingsMap := loadSettings(serverName, db)
 
 	errs := []string{}
@@ -67,11 +67,14 @@ func Load(serverName string, db gorm.DB, settings interface{}) error {
 	}
 }
 
-func loadSettings(serverName string, db gorm.DB) map[string]string {
+func loadSettings(serverName string, db *gorm.DB) map[string]string {
 	serverSettings := []storage.Setting{}
 	globalSettings := []storage.Setting{}
-	db.Where(&storage.Setting{Server: serverName}).Find(&serverSettings)
-	db.Where(&storage.Setting{Server: "global"}).Find(&globalSettings)
+
+	if db != nil {
+		db.Where(&storage.Setting{Server: serverName}).Find(&serverSettings)
+		db.Where(&storage.Setting{Server: "global"}).Find(&globalSettings)
+	}
 
 	settings := make(map[string]string)
 

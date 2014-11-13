@@ -16,9 +16,10 @@ type JoinGameInput struct {
 }
 
 type CreateGameInput struct {
-	Name      string `json: "name"`
-	IsPrivate bool   `json: "isPrivate"`
-	Password  string `json: "password"`
+	Name       string `json: "name"`
+	IsPrivate  bool   `json: "isPrivate"`
+	Password   string `json: "password"`
+	WordlistId int64  `json: "wordlistId"`
 }
 
 func (input *CreateGameInput) Validate() []web.InputError {
@@ -46,7 +47,7 @@ func CreateGameHandler(store *storage.Storage) web.RequestHandler {
 			return nil, web.NewApiError(http.StatusBadRequest, inputErrs)
 		}
 
-		createdGame, _ := game.CreateGame(store, input.Name, input.Password)
+		createdGame, _ := game.CreateGame(store, input.Name, input.Password, input.WordlistId)
 		return NewGame(createdGame), nil
 	}
 }
