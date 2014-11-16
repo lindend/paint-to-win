@@ -5,7 +5,7 @@
 #-p docker repo password
 
 SolutionRoot=`readlink -f ../../../`
-ProjectName="lobby"
+ProjectName="wordlist"
 OutPath="$SolutionRoot/bin"
 
 while getopts o: opt; do

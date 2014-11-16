@@ -5,4 +5,4 @@ ADD wordlist wordlist
 ENV ApiPort 80
 ENV WordlistRoot /etc/paintToWin/wordlists
 
-CMD ["sh", "-c", "./wordlist"]
+CMD ["sh", "-c", "./wordlist", "-db", "$DbConnectionString"]

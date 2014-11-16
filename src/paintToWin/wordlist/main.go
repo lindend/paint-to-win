@@ -12,11 +12,19 @@ import (
 
 	"paintToWin/server"
 	"paintToWin/settings"
+	"paintToWin/storage"
 )
 
 func main() {
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	fmt.Println("Initializing db")
+	database, err := storage.InitializeDatabase(dbConnectionString)
+	if err != nil {
+		log.Fatal("Unable to initialize db ", err)
+		return
+	}
 
 	serverInfo, err := server.LoadServerInfo()
 	if err != nil {
@@ -26,10 +34,19 @@ func main() {
 
 	fmt.Println("Loading config")
 	config := Config{}
-	if err = settings.Load(serverInfo.Name, nil, &config); err != nil {
+	if err = settings.Load(serverInfo.Name, database, &config); err != nil {
 		log.Fatal("Error while loading config: \n" + err.Error())
 		return
 	}
+
+	currentServer := storage.Server{
+		Name:    serverInfo.Name,
+		Address: fmt.Sprintf("http://%v:%d", config.Address, config.ApiPort),
+		Type:    "wordlist",
+	}
+
+	database.Where(storage.Server{Name: currentServer.Name}).Assign(currentServer).FirstOrInit(&currentServer)
+	database.Save(&currentServer)
 
 	rand.Seed(time.Now().UnixNano())
 
