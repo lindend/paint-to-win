@@ -1,6 +1,7 @@
 package wordlist
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"math/rand"
@@ -16,6 +17,10 @@ import (
 )
 
 func main() {
+	var dbConnectionString string
+
+	flag.StringVar(&dbConnectionString, "db", "", "connection string for the database")
+	flag.Parse()
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
@@ -60,7 +65,7 @@ func main() {
 
 	wordlists := make([]Wordlist, len(wordlistInfos))
 	for _, wordlistInfo := range wordlistInfos {
-		if wordlist, err := loadWordlist(wordlistInfo); err != nil {
+		if wordlist, err := loadWordlistFromFile(wordlistInfo); err != nil {
 			fmt.Println("Unable to load wordlist from " + wordlistInfo.Path)
 		} else {
 			wordlists = append(wordlists, wordlist)

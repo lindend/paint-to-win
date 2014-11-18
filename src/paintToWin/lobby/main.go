@@ -40,7 +40,7 @@ func main() {
 
 	fmt.Println("Loading config")
 	config := Config{}
-	if err = settings.Load(serverInfo.Name, &database, &config); err != nil {
+	if err = settings.Load(serverInfo.Name, database, &config); err != nil {
 		log.Fatal("Error while loading config: \n" + err.Error())
 		return
 	}

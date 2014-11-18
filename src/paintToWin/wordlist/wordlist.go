@@ -2,6 +2,7 @@ package wordlist
 
 import (
 	"bufio"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -23,30 +24,37 @@ type WordlistInfo struct {
 	Path     string
 }
 
-func loadWordlist(info WordlistInfo) (Wordlist, error) {
+func loadWordlistFromFile(info WordlistInfo) (Wordlist, error) {
 	file, err := os.Open(info.Path)
 	if err != nil {
 		return Wordlist{}, err
 	}
 	defer file.Close()
 
+	return loadWordlist(info, file), nil
+}
+
+func loadWordlist(info WordlistInfo, file io.Reader) Wordlist {
 	wordlist := Wordlist{
 		Id:       info.Id,
 		Name:     info.Name,
 		Language: info.Language,
-		Words:    make([]string, 0),
 	}
 
-	scanner := bufio.NewScanner(file)
+	wordlist.Words = loadWords(file)
+
+	return wordlist
+}
+
+func loadWords(reader io.Reader) []string {
+	result := make([]string, 0)
+	scanner := bufio.NewScanner(reader)
+
 	for scanner.Scan() {
-		wordlist.Words = append(wordlist.Words, scanner.Text())
+		result = append(result, scanner.Text())
 	}
 
-	if err = scanner.Err(); err != nil {
-		return Wordlist{}, err
-	}
-
-	return wordlist, nil
+	return result
 }
 
 func enumerateWordlists(root string) ([]WordlistInfo, error) {
@@ -64,7 +72,7 @@ func enumerateWordlists(root string) ([]WordlistInfo, error) {
 				result = append(result, subFiles...)
 			}
 		} else {
-			fileParts := strings.SplitN(file.Name(), ":", 2)
+			fileParts := strings.SplitN(file.Name(), ".", 2)
 			if len(fileParts) == 2 {
 				result = append(result, WordlistInfo{
 					Id:       file.Name(),
@@ -80,14 +88,18 @@ func enumerateWordlists(root string) ([]WordlistInfo, error) {
 }
 
 func (wl Wordlist) GetWords(numWords int) []string {
-	result := make([]string, numWords)
-	words := wl.Words
-	for i := 0; i < numWords; i++ {
-		if len(words) > 0 {
-			wordIndex := rand.Intn(len(words))
-			result = append(result, words[wordIndex])
-			words[wordIndex] = words[0]
-			words = words[1:]
+	result := make([]string, 0)
+	selectedWords := make(map[string]struct{})
+
+	if numWords >= len(wl.Words) {
+		return wl.Words
+	}
+
+	for len(result) < numWords {
+		word := wl.Words[rand.Intn(len(wl.Words))]
+		if _, ok := selectedWords[word]; !ok {
+			selectedWords[word] = struct{}{}
+			result = append(result, word)
 		}
 	}
 	return result
