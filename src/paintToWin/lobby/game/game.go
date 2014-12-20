@@ -38,13 +38,13 @@ func CreateGame(store *storage.Storage, name string, password string, wordlistId
 
 		result := api.CreateGameOutput{}
 		var errResult string
-		fmt.Println("Creating game on ", gameServer.Address+"/games/create")
+		fmt.Println("Creating game on ", gameServer.Address+"/games")
 		apiInput := api.CreateGameInput{
 			Name:     name,
 			Password: password,
 			Wordlist: wordlistId,
 		}
-		if err = web.Post(gameServer.Address+"/games/create", apiInput, &result, &errResult); err != nil {
+		if err = web.Post(gameServer.Address+"/games", apiInput, &result, &errResult); err != nil {
 			fmt.Println("Error in http request ", err)
 		} else {
 			return storage.Game{GameId: result.GameId, Name: name}, nil
@@ -62,16 +62,16 @@ func JoinGame(gameId string, store *storage.Storage, session *storage.Session) (
 
 	result := api.ReservationOutput{}
 	var errResult string
-	if err := web.Post(fmt.Sprintf("%v/games/%v/reserve", game.HostedOn,
-		game.GameId), nil, &result, &errResult); err != nil {
+	if err := web.Post(fmt.Sprintf("%v/games/%v/reserve", game.HostedOn, game.GameId),
+		nil, &result, &errResult); err != nil {
 		return api.ReservationOutput{}, err
 	}
 
 	return result, nil
 }
 
-func GetWordLists(store *storage.Storage) ([]storage.WordList, error) {
-	var wordLists []storage.WordList
+func GetWordLists(store *storage.Storage) ([]storage.Wordlist, error) {
+	var wordLists []storage.Wordlist
 	err := store.Db.Find(&wordLists).Error
 	return wordLists, err
 }

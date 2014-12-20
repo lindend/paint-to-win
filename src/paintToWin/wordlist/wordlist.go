@@ -1,7 +1,8 @@
-package wordlist
+package main
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -67,13 +68,16 @@ func enumerateWordlists(root string) ([]WordlistInfo, error) {
 	for _, file := range files {
 		filePath := path.Join(root, file.Name())
 		if file.IsDir() {
-			subFiles, err := enumerateWordlists(filePath)
-			if err != nil {
-				result = append(result, subFiles...)
+			if file.Name()[0] != '.' {
+				subFiles, err := enumerateWordlists(filePath)
+				if err == nil {
+					result = append(result, subFiles...)
+				}
 			}
 		} else {
 			fileParts := strings.SplitN(file.Name(), ".", 2)
 			if len(fileParts) == 2 {
+				fmt.Println("Found wordlist!", file.Name())
 				result = append(result, WordlistInfo{
 					Id:       file.Name(),
 					Name:     fileParts[0],

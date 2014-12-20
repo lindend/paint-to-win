@@ -1,7 +1,7 @@
 package storage
 
-type WordListWords struct {
+type WordlistWords struct {
 	Id         int64
-	WordListId int64
+	WordlistId int64
 	Words      string
 }

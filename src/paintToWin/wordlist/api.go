@@ -1,6 +1,7 @@
-package wordlist
+package main
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -24,7 +25,7 @@ type ApiWordlist struct {
 }
 
 func GetWordlistsHandler(wordlists map[string]Wordlist) web.RequestHandler {
-	wordlistInfos := make([]ApiWordlistInfo, len(wordlists))
+	wordlistInfos := make([]ApiWordlistInfo, 0)
 
 	for _, wordlist := range wordlists {
 		wordlistInfos = append(wordlistInfos, ApiWordlistInfo{

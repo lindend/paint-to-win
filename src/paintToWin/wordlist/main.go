@@ -1,4 +1,4 @@
-package wordlist
+package main
 
 import (
 	"flag"
@@ -58,13 +58,13 @@ func main() {
 	router := mux.NewRouter()
 
 	wordlistInfos, err := enumerateWordlists(config.WordlistRoot)
-
 	if err != nil {
 		log.Fatal("Unable to find wordlists ", err)
 	}
 
-	wordlists := make([]Wordlist, len(wordlistInfos))
+	wordlists := make([]Wordlist, 0)
 	for _, wordlistInfo := range wordlistInfos {
+		fmt.Println("Loading wordlist from", wordlistInfo.Path)
 		if wordlist, err := loadWordlistFromFile(wordlistInfo); err != nil {
 			fmt.Println("Unable to load wordlist from " + wordlistInfo.Path)
 		} else {
@@ -72,8 +72,10 @@ func main() {
 		}
 	}
 
+	fmt.Println("Initializing API")
 	RegisterWordlistApi(router, wordlists)
 
-	fmt.Println("Listening on port ")
+	fmt.Sprintln("Listening on port %v", config.ApiPort)
+	fmt.Println("Starting web service")
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", config.ApiPort), router))
 }

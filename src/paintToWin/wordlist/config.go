@@ -1,4 +1,4 @@
-package wordlist
+package main
 
 type Config struct {
 	WordlistRoot string

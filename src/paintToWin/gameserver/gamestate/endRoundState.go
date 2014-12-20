@@ -27,7 +27,6 @@ func (e *EndRoundState) Activate(g *game.Game) {
 	e.game = g
 
 	e.game.AddScore(e.context.drawingPlayer, calculateDrawingPlayerScore(e.context.correctGuessers, e.game.Players))
-	e.game.AddScore(e.context.choosingPlayer, calculateChoosingPlayerScore(e.context.correctGuessers, e.game.Players))
 
 	for _, pl := range e.context.correctGuessers {
 		e.game.AddScore(pl, calculateCorrectPlayerScore(e.context.correctGuessers, e.game.Players))
@@ -55,24 +54,6 @@ func calculateDrawingPlayerScore(correctGuessers []*game.Player, players []*game
 		return 3
 	}
 	return 1
-}
-
-func calculateChoosingPlayerScore(correctGuessers, players []*game.Player) int {
-	numCorrect := len(correctGuessers)
-	numPlayers := len(players)
-
-	if numCorrect == 0 {
-		return 0
-	}
-
-	if numCorrect == numPlayers {
-		return 1
-	}
-
-	if numCorrect > numPlayers/2 {
-		return 3
-	}
-	return 2
 }
 
 func calculateCorrectPlayerScore(correctGuessers, players []*game.Player) int {

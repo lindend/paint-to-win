@@ -15,7 +15,7 @@ type InitRoundState struct {
 	context stateContext
 }
 
-func NewInitRoundState() *InitRoundState {
+func NewInitRoundState(words []string) *InitRoundState {
 	return &InitRoundState{
 		context: stateContext{},
 	}
@@ -34,7 +34,6 @@ func (state InitRoundState) Name() string {
 func (state *InitRoundState) Activate(g *game.Game) {
 	state.game = g
 
-	state.context.word = ""
 	state.context.correctGuessers = nil
 
 	if len(g.Players) < 3 {
@@ -43,7 +42,6 @@ func (state *InitRoundState) Activate(g *game.Game) {
 		if state.context.drawingPlayer == nil {
 			state.context.drawingPlayer = g.Players[0]
 		}
-		state.context.choosingPlayer = g.Players.NextPlayer(state.context.drawingPlayer)
-		g.SwapState(newWaitForSelectWordState(state.context))
+		g.SwapState(newPlayGameState(state.context))
 	}
 }

@@ -48,7 +48,7 @@ func CreateHandler(gameManager *gamemanager.GameManager) web.RequestHandler {
 			return nil, web.NewApiError(http.StatusBadRequest, err)
 		}
 
-		g, err := gameManager.CreateGame(input.Name)
+		g, err := gameManager.CreateGame(input.Name, input.Wordlist)
 		fmt.Println("Created game ", g, err)
 		if err != nil {
 			return nil, web.NewApiError(http.StatusInternalServerError, "")
@@ -76,6 +76,6 @@ func ReserveHandler(gameManager *gamemanager.GameManager) web.RequestHandler {
 }
 
 func RegisterGameManagerApi(router *mux.Router, gameManager *gamemanager.GameManager) {
-	router.HandleFunc("/games/create", web.DefaultHandler(CreateHandler(gameManager))).Methods("POST", "OPTIONS")
+	router.HandleFunc("/games", web.DefaultHandler(CreateHandler(gameManager))).Methods("POST", "OPTIONS")
 	router.HandleFunc("/games/{gameId}/reserve", web.DefaultHandler(ReserveHandler(gameManager))).Methods("POST", "OPTIONS")
 }
