@@ -28,5 +28,6 @@ func initializeTables(database gorm.DB) {
 		AutoMigrate(&Round{}).
 		AutoMigrate(&Wordlist{}).
 		AutoMigrate(&WordlistWords{}).
-		AutoMigrate(&Setting{})
+		AutoMigrate(&Setting{}).
+		AutoMigrate(&Service{})
 }

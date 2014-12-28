@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+
 	"paintToWin/gameserver/api"
+	"paintToWin/service"
 	"paintToWin/storage"
 	"paintToWin/web"
 )
@@ -21,37 +23,38 @@ func removeGameServer(server *storage.Server) {
 
 }
 
-func CreateGame(store *storage.Storage, name string, password string, wordlistId int64) (storage.Game, error) {
-	var gameServers []storage.Server
-	if err := store.Where(&storage.Server{Type: "gameserver"}, &gameServers); err != nil {
+func CreateGame(services service.ServiceManager, name string, password string, wordlistId string) (storage.Game, error) {
+	gameServers, err := services.Find("gameserver")
+	if err != nil {
 		return storage.Game{}, err
 	}
+
 	if len(gameServers) == 0 {
 		return storage.Game{}, NoActiveGameServersError
 	}
-	fmt.Println("Found ", len(gameServers), " game servers")
-	var err error
+
 	for len(gameServers) > 0 {
 		serverIndex := rand.Intn(len(gameServers))
 		gameServer := gameServers[serverIndex]
 		gameServers = append(gameServers[:serverIndex], gameServers[serverIndex+1:]...)
 
-		result := api.CreateGameOutput{}
-		var errResult string
-		fmt.Println("Creating game on ", gameServer.Address+"/games")
 		apiInput := api.CreateGameInput{
 			Name:     name,
 			Password: password,
 			Wordlist: wordlistId,
 		}
-		if err = web.Post(gameServer.Address+"/games", apiInput, &result, &errResult); err != nil {
-			fmt.Println("Error in http request ", err)
-		} else {
-			return storage.Game{GameId: result.GameId, Name: name}, nil
+
+		fmt.Println("Creating game on ", gameServer.Address+"/games")
+
+		result, err := service.Call(api.CreateGameOperation, gameServer, apiInput)
+		if err == nil {
+			apiRes := result.(api.CreateGameOutput)
+			return storage.Game{GameId: apiRes.GameId, Name: name}, nil
 		}
 	}
 
 	return storage.Game{}, err
+
 }
 
 func JoinGame(gameId string, store *storage.Storage, session *storage.Session) (api.ReservationOutput, error) {

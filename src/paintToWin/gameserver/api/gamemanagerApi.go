@@ -2,19 +2,16 @@ package api
 
 import (
 	"fmt"
-	"net/http"
-
-	"github.com/gorilla/mux"
 
 	"paintToWin/gameserver/gamemanager"
 	"paintToWin/gameserver/network"
-	"paintToWin/web"
+	"paintToWin/service"
 )
 
 type CreateGameInput struct {
 	Name     string
 	Password string
-	Wordlist int64
+	Wordlist string
 }
 
 type CreateGameOutput struct {
@@ -23,6 +20,7 @@ type CreateGameOutput struct {
 }
 
 type ReservationInput struct {
+	GameId string
 }
 
 type ReservationOutput struct {
@@ -32,6 +30,9 @@ type ReservationOutput struct {
 	Endpoints     []network.EndpointInfo
 }
 
+var CreateGameOperation = service.NewOperation(serviceName, "createGame", "games", "POST", CreateGameInput{}, CreateGameOutput{})
+var ReserveSpotOperation = service.NewOperation(serviceName, "reserveSpot", "games/{GameId}/reserve", "POST", ReservationInput{}, ReservationOutput{})
+
 func NewReservationOutput(gameId string, reservationId string, endpoints []network.EndpointInfo) ReservationOutput {
 	return ReservationOutput{
 		GameId:        gameId,
@@ -40,42 +41,33 @@ func NewReservationOutput(gameId string, reservationId string, endpoints []netwo
 	}
 }
 
-func CreateHandler(gameManager *gamemanager.GameManager) web.RequestHandler {
-	return func(req *http.Request) (interface{}, web.ApiError) {
-		var input CreateGameInput
-		err := web.DeserializeInput(req, &input)
-		if err != nil {
-			return nil, web.NewApiError(http.StatusBadRequest, err)
-		}
-
+func registerCreateGameOperation(host service.Host, gameManager *gamemanager.GameManager) {
+	host.Register(func(input CreateGameInput) (CreateGameOutput, error) {
 		g, err := gameManager.CreateGame(input.Name, input.Wordlist)
 		fmt.Println("Created game ", g, err)
 		if err != nil {
-			return nil, web.NewApiError(http.StatusInternalServerError, "")
+			return CreateGameOutput{}, err
 		} else {
 			return CreateGameOutput{
 				GameId:    g.GameId,
 				Endpoints: gameManager.Endpoints(),
 			}, nil
 		}
-	}
+	}, CreateGameOperation)
 }
 
-func ReserveHandler(gameManager *gamemanager.GameManager) web.RequestHandler {
-	return func(req *http.Request) (interface{}, web.ApiError) {
-		vars := mux.Vars(req)
-		gameId := vars["gameId"]
-
-		reservationId, err := gameManager.ReserveSpot(gameId)
+func registerReserveSpotOperation(host service.Host, gameManager *gamemanager.GameManager) {
+	host.Register(func(input ReservationInput) (ReservationOutput, error) {
+		reservationId, err := gameManager.ReserveSpot(input.GameId)
 		if err != nil {
-			return nil, web.NewApiError(http.StatusInternalServerError, err.Error())
+			return ReservationOutput{}, err
 		} else {
-			return NewReservationOutput(gameId, reservationId, gameManager.Endpoints()), nil
+			return NewReservationOutput(input.GameId, reservationId, gameManager.Endpoints()), nil
 		}
-	}
+	}, ReserveSpotOperation)
 }
 
-func RegisterGameManagerApi(router *mux.Router, gameManager *gamemanager.GameManager) {
-	router.HandleFunc("/games", web.DefaultHandler(CreateHandler(gameManager))).Methods("POST", "OPTIONS")
-	router.HandleFunc("/games/{gameId}/reserve", web.DefaultHandler(ReserveHandler(gameManager))).Methods("POST", "OPTIONS")
+func RegisterGameManagerApi(serviceHost service.Host, gameManager *gamemanager.GameManager) {
+	registerCreateGameOperation(serviceHost, gameManager)
+	registerReserveSpotOperation(serviceHost, gameManager)
 }

@@ -54,3 +54,15 @@ func Post(address string, payload interface{}, result interface{}, resultErr int
 	}
 	return nil
 }
+
+func Get(address string, result interface{}, resultErr interface{}) error {
+	if response, err := http.Get(address); err != nil {
+		return err
+	} else {
+		if err := parseResponse(response, result, resultErr); err != nil {
+			fmt.Println("Error while parsing response ", err)
+			return err
+		}
+	}
+	return nil
+}

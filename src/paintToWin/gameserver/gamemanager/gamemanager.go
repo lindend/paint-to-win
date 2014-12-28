@@ -11,7 +11,6 @@ import (
 	"paintToWin/gameserver/gamestate"
 	"paintToWin/gameserver/network"
 	"paintToWin/storage"
-	"paintToWin/wordlist"
 )
 
 const ReservationTimeout = 60
@@ -54,9 +53,9 @@ func NewGameManager(
 	return &gameManager
 }
 
-func (gameManager *GameManager) CreateGame(name string, wordlistId int64) (*storage.Game, error) {
+func (gameManager *GameManager) CreateGame(name string, wordlistId string) (*storage.Game, error) {
 	fmt.Println("Creating new game")
-	words := loadWords(gameManager.storage, wordlistId, 20)
+	words := loadWords(wordlistId, 20)
 
 	newGame := game.NewGame(<-gameManager.idGenerator, gamestate.NewInitRoundState(words))
 	newGame.Name = name
@@ -148,13 +147,8 @@ func (gameManager *GameManager) removeGame(g *game.Game) {
 	delete(gameManager.games, g.Id)
 }
 
-func loadWords(store *storage.Storage, wordlistId int64, numWords int) []string {
-	dbWordlist := storage.Wordlist{}
-	store.Where(&storage.Wordlist{Id: wordlistId}, &dbWordlist)
-	wordlistWords := storage.WordlistWords{}
-	store.Where(&storage.WordlistWords{WordlistId: wordlistId}, &wordlistWords)
-	wlist := wordlist.LoadWordlistFromStorage(dbWordlist, wordlistWords)
-	return wlist.GetWords(numWords)
+func loadWords(wordlistId string, numWords int) []string {
+	return make([]string, 0)
 }
 
 func (gameManager GameManager) Endpoints() []network.EndpointInfo {

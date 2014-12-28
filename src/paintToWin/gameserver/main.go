@@ -14,6 +14,7 @@ import (
 	"paintToWin/gameserver/network"
 	"paintToWin/gameserver/network/ws"
 	"paintToWin/server"
+	"paintToWin/service"
 	"paintToWin/settings"
 	"paintToWin/storage"
 )
@@ -80,6 +81,8 @@ func main() {
 		Protocol: "ws",
 	})
 
+	serviceManager := service.NewDbServiceManager(&database)
+
 	gameManager := gamemanager.NewGameManager(idGenerator, endpoints, store, currentServer)
 
 	go func() {
@@ -88,7 +91,7 @@ func main() {
 		}
 	}()
 
-	if err := api.Start(config.GameServerApiPort, gameManager); err != nil {
+	if err := api.Start(config.Address, config.GameServerApiPort, gameManager, serviceManager); err != nil {
 		log.Fatal("Error while initializing web API ", err)
 		return
 	}

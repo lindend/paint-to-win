@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/jinzhu/gorm"
 
 	"paintToWin/storage"
+	"paintToWin/util"
 )
 
 func Load(serverName string, db gorm.DB, settings interface{}) error {
@@ -25,31 +25,10 @@ func Load(serverName string, db gorm.DB, settings interface{}) error {
 		settingName := settingsType.Field(i).Name
 
 		if settingValue, ok := settingsMap[settingName]; ok {
-			switch field.Kind() {
-			case reflect.Bool:
-				if value, err := strconv.ParseBool(settingValue); err != nil {
-					errs = append(errs, "Cannot convert "+settingValue+" to bool for setting "+settingName)
-				} else {
-					field.SetBool(value)
-				}
-			case reflect.Int:
-				if value, err := strconv.ParseInt(settingValue, 10, 32); err != nil {
-					errs = append(errs, "Cannot convert "+settingValue+" to int for setting "+settingName)
-				} else {
-					field.SetInt(value)
-				}
-			case reflect.Int64:
-				if value, err := strconv.ParseInt(settingValue, 10, 64); err != nil {
-					errs = append(errs, "Cannot convert "+settingValue+" to int64 for setting "+settingName)
-				} else {
-					field.SetInt(value)
-				}
-			case reflect.String:
-				field.SetString(settingValue)
-			default:
-				errs = append(errs, "No converter available for kind "+field.Kind().String())
+			err := util.ParseStringToValue(settingValue, field)
+			if err != nil {
+				errs = append(errs, err.Error())
 			}
-
 		} else {
 			errs = append(errs, "No setting value registered for "+settingName)
 		}
