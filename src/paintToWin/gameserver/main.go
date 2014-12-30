@@ -81,7 +81,20 @@ func main() {
 		Protocol: "ws",
 	})
 
+	location := service.Location{
+		Address: config.Address,
+		Port:    config.GameServerApiPort,
+
+		Protocol:  "HTTP",
+		Transport: "TCP",
+
+		Priority: 0,
+		Weight:   0,
+	}
+
 	serviceManager := service.NewDbServiceManager(&database)
+	serviceManager.Register(api.Service, location)
+	service.InitFinder(serviceManager)
 
 	gameManager := gamemanager.NewGameManager(idGenerator, endpoints, store, currentServer)
 
@@ -91,7 +104,7 @@ func main() {
 		}
 	}()
 
-	if err := api.Start(config.Address, config.GameServerApiPort, gameManager, serviceManager); err != nil {
+	if err := api.Start(location, gameManager); err != nil {
 		log.Fatal("Error while initializing web API ", err)
 		return
 	}

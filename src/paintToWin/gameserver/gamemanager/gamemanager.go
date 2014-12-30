@@ -10,7 +10,9 @@ import (
 	"paintToWin/gameserver/game"
 	"paintToWin/gameserver/gamestate"
 	"paintToWin/gameserver/network"
+	"paintToWin/service"
 	"paintToWin/storage"
+	"paintToWin/wordlistService/api"
 )
 
 const ReservationTimeout = 60
@@ -54,7 +56,6 @@ func NewGameManager(
 }
 
 func (gameManager *GameManager) CreateGame(name string, wordlistId string) (*storage.Game, error) {
-	fmt.Println("Creating new game")
 	words := loadWords(wordlistId, 20)
 
 	newGame := game.NewGame(<-gameManager.idGenerator, gamestate.NewInitRoundState(words))
@@ -148,7 +149,17 @@ func (gameManager *GameManager) removeGame(g *game.Game) {
 }
 
 func loadWords(wordlistId string, numWords int) []string {
-	return make([]string, 0)
+	var output api.GetWordsOutput
+	err := service.FindAndCall(api.GetWordsOperation, api.GetWordsInput{
+		WordlistId: wordlistId,
+		NumWords:   numWords,
+	}, &output)
+
+	if err != nil {
+		fmt.Println("Error while loading words", err)
+	}
+	fmt.Println("Loaded words ", output)
+	return output.Words
 }
 
 func (gameManager GameManager) Endpoints() []network.EndpointInfo {

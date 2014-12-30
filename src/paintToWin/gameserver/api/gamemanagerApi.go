@@ -43,6 +43,7 @@ func NewReservationOutput(gameId string, reservationId string, endpoints []netwo
 
 func registerCreateGameOperation(host service.Host, gameManager *gamemanager.GameManager) {
 	host.Register(func(input CreateGameInput) (CreateGameOutput, error) {
+		fmt.Println("Creating game with input", input)
 		g, err := gameManager.CreateGame(input.Name, input.Wordlist)
 		fmt.Println("Created game ", g, err)
 		if err != nil {

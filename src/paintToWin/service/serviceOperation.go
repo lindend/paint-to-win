@@ -14,7 +14,7 @@ type ServiceOperation struct {
 	OutputType reflect.Type
 }
 
-func NewOperation(serviceName string, path string, name string, method string, input interface{}, output interface{}) ServiceOperation {
+func NewOperation(serviceName string, name string, path string, method string, input interface{}, output interface{}) ServiceOperation {
 	return ServiceOperation{
 		ServiceName: serviceName,
 

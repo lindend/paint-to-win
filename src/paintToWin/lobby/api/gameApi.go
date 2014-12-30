@@ -2,13 +2,14 @@ package api
 
 import (
 	"net/http"
-	"paintToWin/storage"
-	"paintToWin/web"
-
-	"paintToWin/lobby/game"
 
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
+
+	"paintToWin/lobby/game"
+	"paintToWin/service"
+	"paintToWin/storage"
+	"paintToWin/web"
 )
 
 type JoinGameInput struct {
@@ -19,7 +20,7 @@ type CreateGameInput struct {
 	Name       string `json: "name"`
 	IsPrivate  bool   `json: "isPrivate"`
 	Password   string `json: "password"`
-	WordlistId int64  `json: "wordlistId"`
+	WordlistId string `json: "wordlistId"`
 }
 
 func (input *CreateGameInput) Validate() []web.InputError {
@@ -37,7 +38,7 @@ func ListGamesHandler(store *storage.Storage) web.RequestHandler {
 	}
 }
 
-func CreateGameHandler(store *storage.Storage) web.RequestHandler {
+func CreateGameHandler(serviceManager service.ServiceManager) web.RequestHandler {
 	return func(req *http.Request) (interface{}, web.ApiError) {
 		var input CreateGameInput
 		inputErrs, err := web.DeserializeAndValidateInput(req, &input)
@@ -47,7 +48,7 @@ func CreateGameHandler(store *storage.Storage) web.RequestHandler {
 			return nil, web.NewApiError(http.StatusBadRequest, inputErrs)
 		}
 
-		createdGame, _ := game.CreateGame(store, input.Name, input.Password, input.WordlistId)
+		createdGame, _ := game.CreateGame(serviceManager, input.Name, input.Password, input.WordlistId)
 		return NewGame(createdGame), nil
 	}
 }
@@ -75,11 +76,11 @@ func JoinGameHandler(store *storage.Storage) web.RequestHandler {
 	}
 }
 
-func RegisterGameApi(router *mux.Router, store *storage.Storage) {
+func RegisterGameApi(router *mux.Router, store *storage.Storage, serviceManager service.ServiceManager) {
 	authenticator := NewSessionAuthenticator(store)
 
 	router.HandleFunc("/games", web.DefaultAuthenticateHandler(ListGamesHandler(store), authenticator)).Methods("GET", "OPTIONS")
-	router.HandleFunc("/games/create", web.DefaultAuthenticateHandler(CreateGameHandler(store), authenticator)).Methods("POST", "OPTIONS")
+	router.HandleFunc("/games/create", web.DefaultAuthenticateHandler(CreateGameHandler(serviceManager), authenticator)).Methods("POST", "OPTIONS")
 
 	router.HandleFunc("/games/{gameId}", web.DefaultAuthenticateHandler(GetGameHandler(store), authenticator)).Methods("GET", "OPTIONS")
 	router.HandleFunc("/games/{gameId}/join", web.DefaultAuthenticateHandler(JoinGameHandler(store), authenticator)).Methods("POST", "OPTIONS")

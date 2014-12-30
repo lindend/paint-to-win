@@ -1,27 +1,30 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
 
-	"paintToWin/lobby/game"
+	"paintToWin/service"
 	"paintToWin/storage"
 	"paintToWin/web"
+	"paintToWin/wordlistService/api"
 )
 
-func GetWordlistsHandler(store *storage.Storage) web.RequestHandler {
+func GetWordlistsHandler() web.RequestHandler {
 	return func(req *http.Request) (interface{}, web.ApiError) {
-		wordLists, err := game.GetWordLists(store)
+		var output api.GetWordlistsOutput
+		err := service.FindAndCall(api.GetWordlistsOperation, nil, &output)
 		if err != nil {
-			return nil, web.NewApiError(http.StatusInternalServerError, err.Error())
+			fmt.Println("Unable to call wordlist service", err)
 		}
-		return wordLists, nil
+		return output, nil
 	}
 }
 
 func RegisterMetadataApi(router *mux.Router, store *storage.Storage) {
 	authenticator := NewSessionAuthenticator(store)
 
-	router.HandleFunc("/wordlists", web.DefaultAuthenticateHandler(GetWordlistsHandler(store), authenticator)).Methods("GET", "OPTIONS")
+	router.HandleFunc("/wordlists", web.DefaultAuthenticateHandler(GetWordlistsHandler(), authenticator)).Methods("GET", "OPTIONS")
 }

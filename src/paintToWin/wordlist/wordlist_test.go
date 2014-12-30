@@ -1,4 +1,4 @@
-package main
+package wordlist
 
 import (
 	"math/rand"

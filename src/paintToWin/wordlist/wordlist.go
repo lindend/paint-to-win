@@ -1,4 +1,4 @@
-package main
+package wordlist
 
 import (
 	"bufio"
@@ -25,7 +25,7 @@ type WordlistInfo struct {
 	Path     string
 }
 
-func loadWordlistFromFile(info WordlistInfo) (Wordlist, error) {
+func LoadWordlistFromFile(info WordlistInfo) (Wordlist, error) {
 	file, err := os.Open(info.Path)
 	if err != nil {
 		return Wordlist{}, err
@@ -58,7 +58,7 @@ func loadWords(reader io.Reader) []string {
 	return result
 }
 
-func enumerateWordlists(root string) ([]WordlistInfo, error) {
+func EnumerateWordlists(root string) ([]WordlistInfo, error) {
 	files, err := ioutil.ReadDir(root)
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func enumerateWordlists(root string) ([]WordlistInfo, error) {
 		filePath := path.Join(root, file.Name())
 		if file.IsDir() {
 			if file.Name()[0] != '.' {
-				subFiles, err := enumerateWordlists(filePath)
+				subFiles, err := EnumerateWordlists(filePath)
 				if err == nil {
 					result = append(result, subFiles...)
 				}

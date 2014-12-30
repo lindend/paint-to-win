@@ -13,6 +13,7 @@ import (
 
 	"paintToWin/lobby/api"
 	"paintToWin/server"
+	"paintToWin/service"
 	"paintToWin/settings"
 	"paintToWin/storage"
 )
@@ -52,12 +53,15 @@ func main() {
 		return
 	}
 
+	serviceManager := service.NewDbServiceManager(&database)
+	service.InitFinder(serviceManager)
+
 	rand.Seed(time.Now().UnixNano())
 
 	router := mux.NewRouter()
 
 	api.RegisterUserApi(router, store)
-	api.RegisterGameApi(router, store)
+	api.RegisterGameApi(router, store, serviceManager)
 	api.RegisterMetadataApi(router, store)
 
 	fmt.Println("Listening on port ")

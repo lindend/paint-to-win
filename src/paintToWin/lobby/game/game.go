@@ -26,10 +26,12 @@ func removeGameServer(server *storage.Server) {
 func CreateGame(services service.ServiceManager, name string, password string, wordlistId string) (storage.Game, error) {
 	gameServers, err := services.Find("gameserver")
 	if err != nil {
+		fmt.Println("Error while finding a game server", err)
 		return storage.Game{}, err
 	}
 
 	if len(gameServers) == 0 {
+		fmt.Println("No active game serves found")
 		return storage.Game{}, NoActiveGameServersError
 	}
 
@@ -44,17 +46,15 @@ func CreateGame(services service.ServiceManager, name string, password string, w
 			Wordlist: wordlistId,
 		}
 
-		fmt.Println("Creating game on ", gameServer.Address+"/games")
-
-		result, err := service.Call(api.CreateGameOperation, gameServer, apiInput)
+		fmt.Println("Creating game on ", gameServer.Address+"/games", "with input", apiInput)
+		var result api.CreateGameOutput
+		err = service.Call(api.CreateGameOperation, gameServer, apiInput, &result)
 		if err == nil {
-			apiRes := result.(api.CreateGameOutput)
-			return storage.Game{GameId: apiRes.GameId, Name: name}, nil
+			return storage.Game{GameId: result.GameId, Name: name}, nil
 		}
 	}
 
 	return storage.Game{}, err
-
 }
 
 func JoinGame(gameId string, store *storage.Storage, session *storage.Session) (api.ReservationOutput, error) {

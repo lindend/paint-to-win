@@ -17,7 +17,9 @@ type InitRoundState struct {
 
 func NewInitRoundState(words []string) *InitRoundState {
 	return &InitRoundState{
-		context: stateContext{},
+		context: stateContext{
+			words: words,
+		},
 	}
 }
 

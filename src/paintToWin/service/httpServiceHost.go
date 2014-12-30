@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"net/http"
 	"reflect"
 	"regexp"
@@ -13,24 +14,23 @@ import (
 )
 
 type HttpServiceHost struct {
-	serviceManager ServiceManager
-	location       Location
+	location Location
 
 	router *mux.Router
 }
 
 type inputBuilder func(req *http.Request) (reflect.Value, error)
 
-func NewHttpServiceHost(location Location, serviceManager ServiceManager, router *mux.Router) *HttpServiceHost {
+func NewHttpServiceHost(location Location, router *mux.Router) *HttpServiceHost {
 	return &HttpServiceHost{
-		serviceManager: serviceManager,
-		location:       location,
-		router:         router,
+		location: location,
+		router:   router,
 	}
 }
 
 func (h *HttpServiceHost) Register(function interface{}, operation ServiceOperation) error {
-	h.router.HandleFunc(operation.Path, web.DefaultHandler(buildHttpOperationHandler(function, operation, h.location))).Methods(operation.Method, "OPTIONS")
+	fmt.Println("Registering http service ", operation.Path, operation.Method)
+	h.router.HandleFunc("/"+operation.Path, web.DefaultHandler(buildHttpOperationHandler(function, operation, h.location))).Methods(operation.Method, "OPTIONS")
 	return nil
 }
 
@@ -56,10 +56,11 @@ func createInputBuilder(argument reflect.Type, operationInputs []string) inputBu
 	}
 
 	return func(req *http.Request) (reflect.Value, error) {
-		inputValue := reflect.New(argument)
+		inputValuePtr := reflect.New(argument)
+		inputValue := reflect.Indirect(inputValuePtr)
 		vars := mux.Vars(req)
 
-		web.DeserializeInput(req, inputValue.Interface())
+		web.DeserializeInput(req, inputValuePtr.Interface())
 
 		for _, field := range fields {
 			varValue := vars[field]
@@ -90,12 +91,13 @@ func parseHttpResults(values []reflect.Value) (interface{}, web.ApiError) {
 	var resultValue interface{}
 
 	for _, v := range values {
-		if v.IsNil() {
+		if (v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface) && v.IsNil() {
 			continue
 		}
 
-		if v.Type().Implements(reflect.TypeOf((*error)(nil))) {
+		if v.Kind() == reflect.Interface && v.Type().Implements(reflect.TypeOf((*error)(nil)).Elem()) {
 			err := v.Interface().(error)
+			fmt.Println("HTTP operation failed", err)
 			errValue = web.NewApiError(http.StatusInternalServerError, err)
 		} else {
 			resultValue = v.Interface()

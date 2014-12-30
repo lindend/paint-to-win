@@ -5,42 +5,41 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"strings"
 
 	"paintToWin/web"
 )
 
-func FindAndCall(operation ServiceOperation, input interface{}) (interface{}, error) {
+func FindAndCall(operation ServiceOperation, input interface{}, output interface{}) error {
 	locations, err := Find(operation.ServiceName)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return Call(operation, locations[0], input)
+	return Call(operation, locations[0], input, output)
 }
 
-func Call(operation ServiceOperation, location Location, input interface{}) (interface{}, error) {
+func Call(operation ServiceOperation, location Location, input interface{}, output interface{}) error {
 	if !verifyType(operation.InputType, input) {
 		panic("Invalid input type")
 	}
 
-	output := reflect.Zero(operation.OutputType).Interface()
-
-	switch location.Protocol {
+	switch strings.ToLower(location.Protocol) {
 	case HttpProtocol:
 		err := callHttpService(operation, location, input, output)
-		return output, err
+		return err
 	}
-	return nil, errors.New("No such service type available")
+	return errors.New("Protocol not supported: " + location.Protocol)
 }
 
 func callHttpService(operation ServiceOperation, location Location, input interface{}, output interface{}) error {
 	path := resolveOperationPath(operation.Path, input)
 	operationUri := fmt.Sprintf("%v://%v:%v/%v", location.Protocol, location.Address, location.Port, path)
 
-	switch operation.Method {
-	case "POST":
+	switch strings.ToLower(operation.Method) {
+	case "post":
 		var errResult ServiceError
 		return web.Post(operationUri, input, output, &errResult)
-	case "GET":
+	case "get":
 		var errResult ServiceError
 		return web.Get(operationUri, output, &errResult)
 	}

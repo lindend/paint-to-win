@@ -12,22 +12,12 @@ import (
 )
 
 const serviceName = "gameserver"
+const Service = serviceName
 
-func Start(address string, apiPort int, gameManager *gamemanager.GameManager, serviceManager service.ServiceManager) error {
+func Start(location service.Location, gameManager *gamemanager.GameManager) error {
 	router := mux.NewRouter()
 
-	location := service.Location{
-		Address: address,
-		Port:    apiPort,
-
-		Protocol:  "HTTP",
-		Transport: "TCP",
-
-		Priority: 0,
-		Weight:   0,
-	}
-
-	host := service.NewHttpServiceHost(location, serviceManager, router)
+	host := service.NewHttpServiceHost(location, router)
 	RegisterGameManagerApi(host, gameManager)
 
 	go func() {
