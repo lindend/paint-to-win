@@ -1,13 +1,14 @@
 package gamestate
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
 	"paintToWin/gameserver/game"
 )
 
-const MinNumPlayers = 3
+const MinNumPlayers = 2
 
 type PlayGameState struct {
 	DefaultDeactivate
@@ -31,7 +32,8 @@ func newPlayGameState(context stateContext) *PlayGameState {
 		DrawingPlayerId: context.drawingPlayer.TempId,
 		word:            context.words[0],
 	}
-	context.words = context.words[1:]
+	playState.context.words = playState.context.words[1:]
+	fmt.Println("Context words", context.words)
 
 	playState.messageHandler.Add(playState.guessMessage)
 	playState.messageHandler.Add(playState.strokesMessage)
