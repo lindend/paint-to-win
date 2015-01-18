@@ -6,9 +6,9 @@ type Point struct {
 }
 
 type Color struct {
-	Red   int
-	Green int
-	Blue  int
+	R int
+	G int
+	B int
 }
 
 type Stroke struct {
@@ -16,6 +16,7 @@ type Stroke struct {
 	End       Point
 	Color     Color
 	BrushSize int
+	Pressure  float32
 }
 
 type Drawing struct {
@@ -26,6 +27,6 @@ func NewDrawing() Drawing {
 	return Drawing{[]Stroke{}}
 }
 
-func NewStroke(start Point, end Point, color Color, brushSize int) Stroke {
-	return Stroke{start, end, color, brushSize}
+func NewStroke(start Point, end Point, color Color, brushSize int, pressure float32) Stroke {
+	return Stroke{start, end, color, brushSize, pressure}
 }
