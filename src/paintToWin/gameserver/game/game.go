@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"math"
 )
 
 var PlayerNotFoundError = errors.New("Player not found")
@@ -33,6 +34,7 @@ type Game struct {
 	isRunning bool
 
 	timeout <-chan time.Time
+	timeoutTime time.Time
 }
 
 func NewGame(id string, state GameState) *Game {
@@ -54,6 +56,7 @@ func NewGame(id string, state GameState) *Game {
 		state:     []GameState{state},
 		isRunning: true,
 		timeout:   time.After(10 * time.Minute),
+		timeoutTime: time.Now().Add(10 * time.Minute),
 	}
 	g.setupMessageHandlers()
 	return g
@@ -141,6 +144,7 @@ func (game *Game) Stop() {
 func (game *Game) SetTimeout(timeout time.Duration) {
 	fmt.Println("New timeout ", timeout)
 	game.timeout = time.After(timeout)
+	game.timeoutTime = time.Now().Add(timeout)
 }
 
 func (g *Game) Broadcast(message Message) {
@@ -150,7 +154,10 @@ func (g *Game) Broadcast(message Message) {
 }
 
 func (game *Game) timeLeft() int {
-	return 0
+	timeDifference := game.timeoutTime.Sub(time.Now())
+	secondsLeft := timeDifference.Seconds()
+	cappedSeconds := math.Max(0, secondsLeft)
+	return int(cappedSeconds)
 }
 
 func (game *Game) addPlayer(player *Player) {
