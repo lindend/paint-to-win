@@ -32,6 +32,8 @@ func (e *EndRoundState) Activate(g *game.Game) {
 		e.game.AddScore(pl, calculateCorrectPlayerScore(e.context.correctGuessers, e.game.Players))
 	}
 
+	e.game.BroadcastActiveState()
+
 	if e.game.CurrentRound < e.game.NumRounds {
 		e.context.drawingPlayer = e.game.Players.NextPlayer(e.context.drawingPlayer)
 		e.game.SwapState(newInitRoundState(e.context))

@@ -52,6 +52,7 @@ func (p *PlayGameState) Timeout() {
 func (p *PlayGameState) Activate(g *game.Game) {
 	p.game = g
 	p.game.SetTimeout(120 * time.Second)
+	p.game.BroadcastActiveState()
 	p.context.drawingPlayer.OutData <- game.NewTurnToPaintMessage(p.word)
 }
 
@@ -96,8 +97,8 @@ func (p *PlayGameState) guessMessage(player *game.Player, guess *game.GuessMessa
 			p.game.SetTimeout(10 * time.Second)
 		}
 		p.context.correctGuessers = append(p.context.correctGuessers, player)
+		p.game.BroadcastActiveState()
 	} else {
 		p.game.Broadcast(game.NewWrongGuessMessage(player.TempId, guess.Guess))
 	}
-
 }

@@ -36,6 +36,7 @@ func (w WaitForPlayersState) Timeout() {
 func (w *WaitForPlayersState) Activate(game *game.Game) {
 	w.game = game
 	w.game.SetTimeout(w.timeout)
+	w.game.BroadcastActiveState()
 }
 
 func (w WaitForPlayersState) PlayerJoin(player *game.Player) {

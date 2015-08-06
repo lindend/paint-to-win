@@ -118,6 +118,11 @@ func (game *Game) SwapState(state GameState) {
 
 func (game *Game) activateState() {
 	activeState := game.ActiveState()
+	activeState.Activate(game)
+}
+
+func (game *Game) BroadcastActiveState() {
+	activeState := game.ActiveState()
 	players := []MessagePlayer{}
 	for _, player := range game.Players {
 		if !player.HasLeft {
@@ -130,7 +135,6 @@ func (game *Game) activateState() {
 		}
 	}
 	game.Broadcast(NewGameStateMessage(activeState.Name(), activeState, players, game.timeLeft()))
-	activeState.Activate(game)
 }
 
 func (game *Game) ActiveState() GameState {
