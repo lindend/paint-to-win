@@ -1,0 +1,7 @@
+pkg
+bin
+
+*.exe
+*.o
+*.a
+*.so
