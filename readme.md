@@ -51,30 +51,3 @@ Navigate to empty temp folder.
 *cd utils*
 
 *sudo ./install_server.sh*
-
-## Front end required tools
-
-### Linux installation
-
-**nodejs** *sudo apt-get install nodejs* (might also need a "ln -s /usr/bin/nodejs /usr/bin/node")
-
-**npm** *sudo apt-get install npm*
-
-**grunt** *sudo npm install -g grunt-cli*
-
-**less** *sudo npm install -g less*
-
-### Windows installation
-**nodejs** and **npm** http://nodejs.org/download/
-
-**grunt** *npm install -g grunt-cli*
-
-**less** *npm install -g less*
-
-### Building
-Dev build: *grunt*
-Release build: *grunt release*
-
-To automatically build html5 client when a file is updated, type *grunt watch*
-
-
