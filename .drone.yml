@@ -1,0 +1,13 @@
+image: golang:latest
+env:
+ - GOPATH=/var/cache/drone/src/github.com/lindend/paint-to-win/
+script:
+ - cd src/paintToWin/gameserver
+ - go build
+ - go test -v
+ - cd ../lobby
+ - go build
+ - go test -v
+ - cd ../wordlistService
+ - go build
+ - go test -v
