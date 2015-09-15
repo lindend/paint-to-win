@@ -1,9 +1,9 @@
 image: golang:latest
 env:
- - GOPATH=/var/cache/drone/src/github.com/lindend/paint-to-win/
+ - GOPATH=$DRONE_BUILD_DIR
 script:
  - cd src/paintToWin/gameserver
- - go build
+ - go build -o "$OUTPUT_ROOT_DIR/"
  - go test -v
  - cd ../lobby
  - go build
