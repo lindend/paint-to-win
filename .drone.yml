@@ -1,13 +1,14 @@
 image: golang:latest
 env:
  - GOPATH=$DRONE_BUILD_DIR
+ - P2WVERSION=0.0.0
 script:
  - cd src/paintToWin/gameserver
- - go build -o "$OUTPUT_ROOT_DIR/"
+ - go build -o "$OUTPUT_ROOT_DIR/paint-to-win/$DRONE_BRANCH/$P2WVERSION.$DRONE_BUILD_NUMBER/gameserver"
  - go test -v
  - cd ../lobby
- - go build
+ - go build -o "$OUTPUT_ROOT_DIR/paint-to-win/$DRONE_BRANCH/$P2WVERSION.$DRONE_BUILD_NUMBER/lobby"
  - go test -v
  - cd ../wordlistService
- - go build
+ - go build -o "$OUTPUT_ROOT_DIR/paint-to-win/$DRONE_BRANCH/$P2WVERSION.$DRONE_BUILD_NUMBER/wordlistService"
  - go test -v
